@@ -111,6 +111,71 @@ Carga un CV en PDF con texto seleccionable, escribe la descripción de la vacant
 
 En las siguientes ejecuciones, basta con entrar en la carpeta, configurar la clave en esa terminal e iniciar Streamlit; reinstala dependencias cuando cambien los archivos `requirements`.
 
+## Ejecución local en Linux
+
+Ejecuta estos comandos en Bash desde una terminal. Necesitas Python 3.12 con los módulos `venv` y `pip` disponibles; si faltan, instálalos mediante el gestor de paquetes de tu distribución.
+
+### 1. Entrar en el proyecto
+
+```bash
+cd /ruta/al/proyecto/CV_Analyzer
+```
+
+Sustituye la ruta por la ubicación real del repositorio en Linux.
+
+### 2. Crear el entorno virtual
+
+La primera vez:
+
+```bash
+python3.12 --version
+python3.12 -m venv .venv
+```
+
+Si `python3 --version` muestra Python 3.12, también puedes utilizar `python3` para crearlo. Si el proyecto procede de Windows, crea un entorno nuevo en Linux: no reutilices ni copies el `.venv` de Windows. Si ya tienes un `.venv` creado en Linux para este proyecto, omite este paso.
+
+### 3. Instalar o actualizar dependencias
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt -c requirements-lock.txt
+./.venv/bin/python -m pip check
+```
+
+No es necesario activar el entorno porque se invoca su intérprete directamente. Las versiones registradas se verificaron en Windows; la instalación y `pip check` deben comprobarse también en tu distribución Linux.
+
+### 4. Configurar Gemini
+
+En la misma terminal que iniciará la aplicación:
+
+```bash
+export GOOGLE_API_KEY="tu_clave_de_gemini"
+```
+
+Sustituye el ejemplo por tu clave de Google AI Studio. Como alternativa puedes definir `GEMINI_API_KEY`; si ambas tienen valor, prevalece `GOOGLE_API_KEY`. La variable pertenece a la sesión de la terminal y `.env` no se carga automáticamente.
+
+El modelo predeterminado es `gemini-3.5-flash-lite`. Para cambiarlo, define opcionalmente:
+
+```bash
+export GEMINI_MODEL="gemini-3.6-flash"
+```
+
+### 5. Iniciar y utilizar la aplicación
+
+```bash
+./.venv/bin/python -m streamlit run app.py --server.port=8501 --browser.gatherUsageStats=false
+```
+
+Abre <http://localhost:8501>, carga el CV en PDF, escribe la vacante y pulsa **Analizar Candidato**. Detén el servidor con `Ctrl+C`. Si el puerto está ocupado, cambia `--server.port`.
+
+Para ejecutarla nuevamente, entra en la carpeta del proyecto, configura la clave en esa terminal e inicia Streamlit. No necesitas recrear el entorno en cada ejecución. Para ejecutar las pruebas en Linux:
+
+```bash
+./.venv/bin/python -m pip install -r requirements-dev.txt -c requirements-lock.txt
+./.venv/bin/python -m pytest -q
+```
+
+Estas instrucciones de Linux no se han ejecutado en este equipo Windows.
+
 ## Ejecución con Docker
 
 Esta alternativa no necesita el entorno Python local. Inicia Docker Desktop con contenedores Linux y comprueba el motor:
