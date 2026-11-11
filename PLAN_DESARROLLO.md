@@ -152,6 +152,8 @@ Esta etapa corrige limitaciones descritas en el taller y amplía su comportamien
 
 ## Etapa 9. Preparar la ejecución en Docker
 
+**Estado:** archivos preparados y revisados; validación de contenedor pendiente. Se añadieron Dockerfile y .dockerignore con copia explícita, contexto limitado, dependencias restringidas, usuario sin privilegios y healthcheck. No se encontró Docker en el equipo: no se ha construido una imagen ni comprobado su ejecución o compatibilidad Linux. [Instrucciones y verificaciones pendientes](docs/DOCKER.md).
+
 **Archivos:** `Dockerfile`, `.dockerignore` y sección correspondiente del README.
 
 **Trabajo:** crear un contenedor independiente basado en Python 3.12, apuntando directamente al `app.py` de este repositorio y al puerto 8501. Pasar la clave por el entorno, sin incluirla en la imagen. Excluir documentos personales, entorno virtual, Git y secretos del contexto de construcción. No incluir PostgreSQL/pgAdmin, que el analizador no utiliza. Compose puede añadirse posteriormente si aporta comodidad; no es necesario para ejecutar un solo servicio.

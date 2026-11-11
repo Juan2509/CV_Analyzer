@@ -1,0 +1,15 @@
+# Excluir por defecto; enviar solo el código y las dependencias de ejecución.
+**
+!Dockerfile
+!.dockerignore
+!requirements.txt
+!requirements-lock.txt
+!app.py
+!models/
+!models/*.py
+!prompts/
+!prompts/*.py
+!services/
+!services/*.py
+!ui/
+!ui/*.py

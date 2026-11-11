@@ -2,7 +2,7 @@
 
 Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
 
-**Estado actual:** etapas 1 a 8 completadas con pruebas locales, incluida la interfaz Streamlit con resultados temporales por sesión y limpieza del formulario. Docker y la verificación con una cuenta real aún están pendientes.
+**Estado actual:** etapas 1 a 8 completadas con pruebas locales. La etapa 9 tiene los archivos Docker preparados, con construcción y arranque pendientes porque Docker no está instalado. La verificación con una cuenta real también sigue pendiente.
 
 ## Documentación
 
@@ -78,7 +78,20 @@ El análisis se mantiene en `st.session_state`, separado para cada sesión. Se a
 
 Los controles envían sus cambios al servidor mediante las interacciones habituales de Streamlit (por ejemplo, al salir del campo de texto). Se retiró `st.form` para detectar estos cambios sin esperar al envío del formulario. Solo **Analizar Candidato** ejecuta la extracción y la evaluación; las demás interacciones no repiten llamadas al modelo. La conservación es temporal: no garantiza recuperar resultados al cerrar o restablecer la sesión.
 
-La ejecución con Docker se documentará y comprobará en la etapa 9.
+## Ejecutar con Docker
+
+Los archivos están preparados, pero no se construyó ni ejecutó la imagen: Docker no está disponible en este equipo. Consulta los [requisitos, comandos y comprobaciones pendientes](docs/DOCKER.md).
+
+Cuando Docker esté instalado e iniciado con contenedores Linux, desde la raíz y con `OPENAI_API_KEY` definida en la terminal:
+
+```powershell
+docker build -t cv-analyzer:local .
+docker run --rm --name cv-analyzer -p 127.0.0.1:8501:8501 -e OPENAI_API_KEY cv-analyzer:local
+```
+
+Abre <http://localhost:8501>. Desde otra terminal, detén el contenedor con `docker stop cv-analyzer`.
+
+El contenedor apunta al `app.py` de este repositorio, usa un usuario sin privilegios y consulta la salud de Streamlit. `.dockerignore` limita el contexto al código y archivos necesarios. No incluye credenciales ni requiere PostgreSQL/pgAdmin. Las dependencias fijadas se comprobarán en Linux durante la construcción real.
 
 ## Verificación del entorno
 
