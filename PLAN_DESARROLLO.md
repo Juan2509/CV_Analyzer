@@ -140,6 +140,8 @@ Mostrar ambas etiquetas sin confundirlas: 65 % corresponde a Bueno y con potenci
 
 ## Etapa 8. Mejorar el estado de la interfaz (recomendada)
 
+**Estado:** completada. El análisis y sus mensajes se conservan en `st.session_state`, asociados al hash del PDF y la descripción normalizada. Los cambios invalidan resultados, un nuevo fallo descarta el análisis anterior y Limpiar reinicia widgets mediante callback y una nueva clave del uploader. Los controles están fuera de `st.form` para detectar cambios sin otro envío. Ocho casos nuevos y 88 pruebas totales satisfactorias; sin llamadas reales a OpenAI.
+
 Esta etapa corrige limitaciones descritas en el taller y amplía su comportamiento de referencia; no es persistencia duradera.
 
 **Trabajo:** conservar el resultado en `st.session_state` durante la sesión; asociarlo a las entradas utilizadas para no presentar un análisis anterior como si correspondiera a un CV o puesto nuevo. Hacer que Limpiar reinicie entradas, resultado y mensajes mediante mecanismos compatibles con los widgets de Streamlit. Evitar nuevas llamadas a la API por interacciones ajenas al botón de análisis.

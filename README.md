@@ -2,7 +2,7 @@
 
 Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
 
-**Estado actual:** etapas 1 a 7 completadas con pruebas locales, incluida la interfaz Streamlit. La conservación del resultado durante la sesión, Docker y la verificación con una cuenta real aún están pendientes.
+**Estado actual:** etapas 1 a 8 completadas con pruebas locales, incluida la interfaz Streamlit con resultados temporales por sesión y limpieza del formulario. Docker y la verificación con una cuenta real aún están pendientes.
 
 ## Documentación
 
@@ -72,7 +72,11 @@ Abre <http://localhost:8501>. Para detenerla, pulsa `Ctrl+C` en la terminal. Si 
 
 El formulario valida las entradas y muestra los fallos de extracción o evaluación sin inventar puntuaciones. El ajuste principal y la recomendación usan escalas diferentes: 65 % se presenta como **Bueno** y **Candidato con potencial**. El aviso previo explica que los textos se envían a OpenAI y que el análisis apoya la revisión humana.
 
-**Guardar Análisis** solo muestra un aviso de funcionalidad en desarrollo. En esta etapa el resultado se muestra durante la ejecución del análisis y puede desaparecer al interactuar de nuevo, incluido al pulsar Guardar. La conservación temporal del resultado y el botón Limpiar se implementarán en la etapa 8. No existe exportación ni almacenamiento duradero.
+**Guardar Análisis** solo muestra un aviso de funcionalidad en desarrollo y conserva el resultado visible. **Limpiar** borra el PDF cargado, la descripción, el resultado y los mensajes del análisis. No existe exportación ni almacenamiento duradero.
+
+El análisis se mantiene en `st.session_state`, separado para cada sesión. Se asocia al contenido del PDF mediante SHA-256 y a la descripción del puesto sin espacios iniciales o finales. Al cambiar esas entradas se descarta el resultado anterior; volver a los valores previos no recupera un análisis descartado. Un nuevo análisis fallido tampoco mantiene una recomendación anterior.
+
+Los controles envían sus cambios al servidor mediante las interacciones habituales de Streamlit (por ejemplo, al salir del campo de texto). Se retiró `st.form` para detectar estos cambios sin esperar al envío del formulario. Solo **Analizar Candidato** ejecuta la extracción y la evaluación; las demás interacciones no repiten llamadas al modelo. La conservación es temporal: no garantiza recuperar resultados al cerrar o restablecer la sesión.
 
 La ejecución con Docker se documentará y comprobará en la etapa 9.
 
@@ -128,3 +132,5 @@ La etapa 6 añade 21 pruebas, incluidas solicitudes y respuestas HTTP simuladas 
 La etapa 7 añade 22 casos para las dos escalas y el flujo de interfaz con Streamlit AppTest. Se verificaron entradas ausentes, vacante con espacios, presentación del perfil y aclaración de años indeterminados, PDF inválido con el extractor real, fallos de configuración/API y el aviso de Guardar. El recorrido satisfactorio usa extracción y evaluación simuladas; los servicios se prueban también por separado. **80 pruebas totales pasaron**.
 
 Además, se inició temporalmente el servidor en `127.0.0.1:18501`: `/_stcore/health` respondió `200 / ok` y la página principal respondió HTTP 200. Se detuvo al terminar. Esta comprobación y AppTest no sustituyen una revisión visual de navegador ni una evaluación real con OpenAI, ambas pendientes de la validación final.
+
+La etapa 8 añade 8 casos de AppTest: conservación tras reruns y Guardar, invalidación por nueva vacante, cambio de contenido del PDF con el mismo nombre o retirada del archivo, ausencia de recuperación de análisis descartados, limpieza y nueva carga, fallos de reevaluación y aislamiento de sesiones. **88 pruebas totales pasaron**, sin llamadas reales a OpenAI. Permanece el aviso de deprecación de PyPDF2.

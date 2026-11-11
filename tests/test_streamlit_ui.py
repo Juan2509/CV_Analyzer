@@ -132,3 +132,97 @@ def test_guardar_solo_muestra_aviso_sin_evaluar(servicios):
     assert any("No se ha guardado ningún resultado" in i.value for i in app.info)
     for servicio in servicios:
         servicio.assert_not_called()
+
+
+def test_resultado_permanece_en_reruns_y_guardar_sin_repetir_llamadas(servicios):
+    app = iniciar_con_entradas()
+    app.button(key="analizar").click().run()
+    app.run()
+    assert [m.value for m in app.metric] == ["65 %", "Bueno"]
+
+    app.button(key="guardar").click().run()
+    assert not app.exception
+    assert [m.value for m in app.metric] == ["65 %", "Bueno"]
+    assert any("No se ha guardado ningún resultado" in i.value for i in app.info)
+    for servicio in servicios:
+        servicio.assert_called_once()
+
+
+@pytest.mark.parametrize("cambio", ["vacante", "contenido_pdf", "quitar_pdf"])
+def test_cambios_invalidan_resultado_sin_reevaluar(servicios, cambio):
+    app = iniciar_con_entradas()
+    app.button(key="analizar").click().run()
+    if cambio == "vacante":
+        app.text_area[0].set_value("Puesto diferente").run()
+    elif cambio == "contenido_pdf":
+        # El nombre no cambia: la identidad depende del contenido.
+        app.file_uploader[0].set_value(("cv.pdf", b"Otro CV", "application/pdf")).run()
+    else:
+        app.file_uploader[0].clear().run()
+
+    assert not app.exception
+    assert not app.metric
+    assert "analisis_cv" not in app.session_state
+    for servicio in servicios:
+        servicio.assert_called_once()
+
+
+def test_volver_a_entradas_previas_no_recupera_analisis_descartado(servicios):
+    app = iniciar_con_entradas()
+    app.button(key="analizar").click().run()
+    app.text_area[0].set_value("Otra vacante").run()
+    app.text_area[0].set_value("Vacante Python").run()
+    assert not app.metric
+    servicios[1].assert_called_once()
+
+
+def test_limpiar_reinicia_entradas_resultado_y_no_reevalua(servicios):
+    app = iniciar_con_entradas()
+    app.button(key="analizar").click().run()
+    app.button(key="guardar").click().run()
+    app.button(key="limpiar").click().run()
+
+    assert not app.exception
+    assert app.file_uploader[0].value is None
+    assert app.text_area[0].value == ""
+    assert not app.metric
+    assert not app.error
+    assert not app.warning
+    assert not any("No se ha guardado" in i.value for i in app.info)
+    assert "analisis_cv" not in app.session_state
+    for servicio in servicios:
+        servicio.assert_called_once()
+
+    app.file_uploader[0].set_value(("nuevo.pdf", b"Nuevo CV", "application/pdf"))
+    app.text_area[0].set_value("Nuevo puesto")
+    app.button(key="analizar").click().run()
+    assert not app.exception
+    assert len(app.metric) == 2
+    assert servicios[1].call_count == 2
+
+
+def test_fallo_en_reanalisis_descarta_resultado_anterior_y_limpiar_borra_error(servicios):
+    app = iniciar_con_entradas()
+    app.button(key="analizar").click().run()
+    servicios[1].side_effect = ErrorEvaluacionCV("Error de prueba")
+    app.button(key="analizar").click().run()
+
+    assert not app.metric
+    assert app.error[0].value == "Error de prueba"
+    app.run()
+    assert app.error[0].value == "Error de prueba"
+    assert servicios[1].call_count == 2
+    app.button(key="limpiar").click().run()
+    assert not app.error
+    assert not app.metric
+
+
+def test_sesiones_no_comparten_resultados(servicios):
+    primera = iniciar_con_entradas()
+    primera.button(key="analizar").click().run()
+    segunda = AppTest.from_file(APP_PATH).run()
+    assert len(primera.metric) == 2
+    assert not segunda.metric
+    assert segunda.file_uploader[0].value is None
+    assert segunda.text_area[0].value == ""
+    servicios[1].assert_called_once()
