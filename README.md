@@ -1,149 +1,205 @@
 # CV Analyzer
 
-Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
+Aplicación de Streamlit que compara un currículum en PDF con una vacante utilizando LangChain y OpenAI.
 
-**Estado actual:** etapas 1 a 8 completadas con pruebas locales. La etapa 9 tiene los archivos Docker preparados, con construcción y arranque pendientes porque Docker no está instalado. La verificación con una cuenta real también sigue pendiente.
+## Objetivo y funcionamiento
 
-## Documentación
+Ayudar a revisar candidatos mediante su experiencia, formación, habilidades, fortalezas y áreas de mejora frente a un puesto. El resultado apoya la revisión humana; no sustituye la decisión del reclutador.
 
-- [Alcance, contrato de salida y criterios de aceptación](docs/ALCANCE.md).
-- [Plan de desarrollo por etapas y commits](PLAN_DESARROLLO.md).
-- [Memoria de trabajo](MEMORIA_PROYECTO.md).
-- [Taller de referencia](docs/referencias/TallerCVAnalyzer.md).
-- [Guía LangChain/LangGraph](docs/referencias/LangChain_LangGraph2026.md).
+1. El usuario carga un PDF con texto seleccionable y escribe la vacante.
+2. PyPDF2 extrae el texto de las páginas en memoria.
+3. LangChain prepara mensajes separados para las instrucciones y los documentos.
+4. `ChatOpenAI` utiliza `gpt-4o-mini`, temperatura `0.2` y salida estructurada con Pydantic.
+5. La interfaz muestra el nombre, formación, años y resumen de experiencia, habilidades, fortalezas, áreas de mejora, porcentaje de ajuste y recomendación.
 
-## Funcionalidad prevista
+El prompt solicita estos pesos:
 
-1. Cargar un CV PDF con texto seleccionable y escribir una vacante.
-2. Extraer el texto del documento y solicitar una evaluación al modelo.
-3. Mostrar perfil, experiencia, formación, habilidades, fortalezas, áreas de mejora, ajuste y recomendación.
+| Criterio | Peso |
+| --- | --- |
+| Experiencia relevante | 40 % |
+| Habilidades técnicas | 35 % |
+| Formación y certificaciones | 15 % |
+| Coherencia profesional | 10 % |
 
-El CV y la vacante se enviarán a OpenAI al evaluar. El porcentaje será una estimación generada como apoyo a la revisión humana. La primera entrega no incluye OCR, procesamiento por lotes, exportación ni almacenamiento duradero.
+El modelo estima un porcentaje entero entre 0 y 100. La aplicación valida su rango, pero no calcula una fórmula ponderada independiente ni puntuaciones parciales.
 
-## Preparar el entorno en Windows PowerShell
+La **evaluación principal** utiliza 80–100: Excelente; 60–79: Bueno; 40–59: Regular; 0–39: Bajo. La **recomendación final** utiliza 70–100: Candidato recomendado; 50–69: Candidato con potencial; 0–49: Candidato no recomendado. Por ejemplo, 65 % corresponde a **Bueno** y **Candidato con potencial**.
 
-Usar Python 3.12. Si acabas de instalarlo, abre una terminal nueva para cargar el PATH actualizado. Ejecuta los comandos desde la raíz del repositorio.
+## Requisitos
+
+- Python 3.12 para ejecutar localmente.
+- Clave de OpenAI con acceso al modelo y cuota disponible.
+- Internet para la evaluación.
+- PDF con texto seleccionable; no se realiza OCR.
+- Docker con motor Linux, solo para la alternativa con contenedores.
+
+Al pulsar **Analizar Candidato**, el texto del CV y de la vacante se envía a OpenAI. Las llamadas pueden consumir la cuota de la cuenta.
+
+## Ejecución local en Windows PowerShell
+
+Ejecuta los comandos desde la raíz del repositorio.
+
+### 1. Crear el entorno
+
+Comprueba Python y crea el entorno si todavía no existe:
 
 ```powershell
 python --version
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt -c requirements-lock.txt
-.\.venv\Scripts\python.exe -m pip check
 ```
 
-`requirements.txt` declara las dependencias de ejecución; `requirements-dev.txt` añade pytest. `requirements-lock.txt` registra las versiones directas y transitivas comprobadas con Python 3.12.10 en Windows de 64 bits. Se aplica como archivo de restricciones para repetir esa resolución; otros sistemas deberán verificar su compatibilidad. Para instalar solo las dependencias de ejecución, usa `-r requirements.txt -c requirements-lock.txt`.
-
-Se utiliza directamente el intérprete del entorno, por lo que no es necesario activar PowerShell ni modificar su política de ejecución.
-
-Si `python` no aparece en el PATH, una instalación por usuario puede invocarse de esta forma:
+Si Python no aparece en el PATH, abre una terminal nueva después de instalarlo. En una instalación habitual por usuario puedes usar:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" -m venv .venv
 ```
 
-## Configurar OpenAI
+### 2. Instalar dependencias
 
-En la terminal que posteriormente ejecutará la aplicación:
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -c requirements-lock.txt
+.\.venv\Scripts\python.exe -m pip check
+```
+
+`requirements.txt` declara las dependencias de ejecución y `requirements-lock.txt` restringe las versiones registradas. Se usa el intérprete directamente: no necesitas activar el entorno ni modificar la política de PowerShell.
+
+### 3. Configurar OpenAI
+
+En la misma terminal que iniciará la aplicación:
 
 ```powershell
 $env:OPENAI_API_KEY = "tu_clave_de_openai"
 ```
 
-La clave se configura en el entorno del proceso. Un archivo `.env` no se carga automáticamente. No incluyas credenciales reales en el código o los commits. La instalación y comprobación de paquetes no requieren la clave ni realizan evaluaciones.
+Sustituye el ejemplo por tu clave. La aplicación lee la variable del proceso y no carga automáticamente `.env`. No incluyas credenciales reales en el código ni en archivos versionados.
 
-## Archivos locales excluidos de Git
-
-`.gitignore` excluye entornos virtuales, cachés, secretos, instaladores locales en `.tools/`, PDF y las carpetas `uploads/`, `outputs/` y `data/`. Guarda los CV y resultados locales dentro de esas carpetas. Los datos sintéticos necesarios para pruebas se incorporarán expresamente en su etapa.
-
-## Iniciar la aplicación
-
-Desde la raíz del repositorio, con la clave configurada en esa terminal:
+### 4. Iniciar Streamlit
 
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py --server.port=8501 --browser.gatherUsageStats=false
 ```
 
-Abre <http://localhost:8501>. Para detenerla, pulsa `Ctrl+C` en la terminal. Si el puerto está ocupado, cambia `--server.port`.
+Abre <http://localhost:8501>. Detén el servidor con `Ctrl+C`. Si el puerto está ocupado, cambia `--server.port=8501` por otro valor.
 
-1. Carga un PDF con texto seleccionable.
-2. Describe requisitos, responsabilidades y habilidades deseables de la vacante.
-3. Pulsa **Analizar Candidato**. La aplicación extrae el PDF y solicita la evaluación a OpenAI.
-4. Revisa el perfil, la experiencia, la formación, las listas y ambas clasificaciones.
+## Ejecución con Docker
 
-El formulario valida las entradas y muestra los fallos de extracción o evaluación sin inventar puntuaciones. El ajuste principal y la recomendación usan escalas diferentes: 65 % se presenta como **Bueno** y **Candidato con potencial**. El aviso previo explica que los textos se envían a OpenAI y que el análisis apoya la revisión humana.
+Esta alternativa no necesita el entorno Python local. Inicia Docker Desktop con contenedores Linux y comprueba el motor:
 
-**Guardar Análisis** solo muestra un aviso de funcionalidad en desarrollo y conserva el resultado visible. **Limpiar** borra el PDF cargado, la descripción, el resultado y los mensajes del análisis. No existe exportación ni almacenamiento duradero.
+```powershell
+docker version
+docker info --format '{{.OSType}}'
+```
 
-El análisis se mantiene en `st.session_state`, separado para cada sesión. Se asocia al contenido del PDF mediante SHA-256 y a la descripción del puesto sin espacios iniciales o finales. Al cambiar esas entradas se descarta el resultado anterior; volver a los valores previos no recupera un análisis descartado. Un nuevo análisis fallido tampoco mantiene una recomendación anterior.
+El primer comando debe mostrar cliente y servidor; el segundo debe devolver `linux`.
 
-Los controles envían sus cambios al servidor mediante las interacciones habituales de Streamlit (por ejemplo, al salir del campo de texto). Se retiró `st.form` para detectar estos cambios sin esperar al envío del formulario. Solo **Analizar Candidato** ejecuta la extracción y la evaluación; las demás interacciones no repiten llamadas al modelo. La conservación es temporal: no garantiza recuperar resultados al cerrar o restablecer la sesión.
+### 1. Construir la imagen
 
-## Ejecutar con Docker
-
-Los archivos están preparados, pero no se construyó ni ejecutó la imagen: Docker no está disponible en este equipo. Consulta los [requisitos, comandos y comprobaciones pendientes](docs/DOCKER.md).
-
-Cuando Docker esté instalado e iniciado con contenedores Linux, desde la raíz y con `OPENAI_API_KEY` definida en la terminal:
+Desde la raíz:
 
 ```powershell
 docker build -t cv-analyzer:local .
+```
+
+El Dockerfile utiliza Python 3.12, instala las dependencias restringidas, comprueba imports y `pip check`, y ejecuta la aplicación sin privilegios de administrador. No requiere PostgreSQL, pgAdmin ni Docker Compose.
+
+### 2. Iniciar el contenedor
+
+Con `OPENAI_API_KEY` definida en esa terminal:
+
+```powershell
 docker run --rm --name cv-analyzer -p 127.0.0.1:8501:8501 -e OPENAI_API_KEY cv-analyzer:local
 ```
 
-Abre <http://localhost:8501>. Desde otra terminal, detén el contenedor con `docker stop cv-analyzer`.
+Abre <http://localhost:8501>. La clave se pasa al ejecutar y no se incorpora a la imagen. Para otro puerto del equipo, publica `-p 127.0.0.1:8502:8501` y abre <http://localhost:8502>.
 
-El contenedor apunta al `app.py` de este repositorio, usa un usuario sin privilegios y consulta la salud de Streamlit. `.dockerignore` limita el contexto al código y archivos necesarios. No incluye credenciales ni requiere PostgreSQL/pgAdmin. Las dependencias fijadas se comprobarán en Linux durante la construcción real.
+### 3. Comprobar y detener
 
-## Verificación del entorno
-
-Se comprobó `pip check` sin conflictos y la importación de Streamlit, PyPDF2, LangChain OpenAI, LangChain Core, Pydantic y pytest. Consulta el [registro de la etapa 2](docs/ENTORNO.md). Esta comprobación no valida todavía el análisis de CV ni el acceso a la API.
-
-## Modelo y pruebas
-
-`models/cv_model.py` define `AnalisisCV` con los ocho campos obligatorios del taller y valida que el porcentaje de ajuste esté entre 0 y 100. Conserva los nombres `education` y `experiencia_años` del contrato de referencia. Las listas contienen textos y no tienen restricciones adicionales de longitud.
-
-Para ejecutar las pruebas desde la raíz:
+Desde otra terminal:
 
 ```powershell
+docker inspect --format '{{.State.Health.Status}}' cv-analyzer
+Invoke-WebRequest -Uri 'http://localhost:8501/_stcore/health' -UseBasicParsing
+docker logs cv-analyzer
+docker stop cv-analyzer
+```
+
+La salud puede tardar en pasar de `starting` a `healthy`. La consulta HTTP debe devolver estado 200 y contenido `ok`. Ajusta la URL si cambiaste el puerto. `--rm` elimina el contenedor al detenerlo; no se configura almacenamiento duradero.
+
+## Uso
+
+1. Carga el CV y escribe la vacante.
+2. Pulsa **Analizar Candidato** y espera la respuesta.
+3. Revisa el perfil, las evidencias y ambas clasificaciones.
+4. Usa **Limpiar** para borrar entradas, resultado y mensajes.
+
+Ejemplo de vacante:
+
+```text
+Puesto: Desarrollador Python
+Obligatorios: 3 años de experiencia, Python, APIs REST y PostgreSQL.
+Deseables: Docker y pruebas automatizadas.
+Responsabilidades: desarrollar servicios, integrar APIs y mantener pruebas.
+```
+
+El resultado permanece temporalmente en la sesión. Cambiar el contenido del CV o la descripción descarta el análisis anterior sin llamar al modelo. Solo **Analizar Candidato** ejecuta una evaluación. Si falla, no se presenta una puntuación ficticia ni se conserva una recomendación anterior.
+
+**Guardar Análisis** solo muestra un aviso de funcionalidad en desarrollo; no guarda ni exporta resultados.
+
+## Estructura
+
+```text
+CV_Analyzer/
+├── app.py                    # Punto de entrada de Streamlit
+├── models/cv_model.py        # Contrato Pydantic del análisis
+├── prompts/cv_prompts.py     # Instrucciones de evaluación
+├── services/
+│   ├── pdf_processor.py      # Extracción de texto en memoria
+│   └── cv_evaluator.py       # Integración con LangChain y OpenAI
+├── ui/streamlit_ui.py        # Interfaz, escalas y estado de sesión
+├── tests/                   # Pruebas y generador de PDF sintéticos
+├── requirements.txt         # Dependencias de ejecución
+├── requirements-dev.txt     # Dependencias de desarrollo
+├── requirements-lock.txt    # Versiones registradas
+├── Dockerfile
+├── .dockerignore
+├── .gitignore
+└── README.md
+```
+
+## Pruebas y validación
+
+Instala las dependencias de desarrollo y ejecuta las pruebas:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt -c requirements-lock.txt
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-La etapa 3 se verificó con 17 pruebas satisfactorias de datos válidos, límites, campos ausentes y tipos de elementos de listas. No requieren credenciales ni llamadas a OpenAI.
+La última validación completó **94 pruebas satisfactorias**, con datos sintéticos y sin solicitudes reales a OpenAI. Incluye esquema, PDF, prompts, errores del evaluador, escalas, interfaz, sesión y recorrido completo con HTTP simulado. `pip check` no detectó conflictos. PyPDF2 emite un aviso de deprecación; se conserva la dependencia utilizada en el taller.
 
-## Extracción de PDF
+El servidor local respondió HTTP 200 en la página principal y en salud. La revisión visual en navegador no se completó. La construcción Docker se inició durante la validación, pero no se confirmó su finalización ni la ejecución del contenedor. La prueba real de acceso, cuota y calidad de respuesta de OpenAI también está pendiente.
 
-`services/pdf_processor.py` implementa `extraer_texto_pdf(archivo_pdf)`: acepta bytes o un archivo binario abierto (como UploadedFile de Streamlit), extrae texto en memoria y separa páginas con dos saltos de línea. No cierra el archivo recibido ni realiza OCR.
+## Limitaciones y datos locales
 
-Los documentos ilegibles, sin texto extraíble o protegidos generan `ErrorProcesamientoPDF`. La futura interfaz deberá capturar esa excepción, mostrar su mensaje y detener el flujo antes de evaluar. A diferencia de la referencia, los mensajes de error no se devuelven como si fueran texto extraído.
+- Un CV por operación; sin OCR, procesamiento por lotes, exportación ni base de datos.
+- El resultado es generativo y puede variar. Pydantic comprueba estructura y rango, no la exactitud de las conclusiones.
+- Se envía el CV completo, sin segmentación ni control explícito de tokens.
+- Separar instrucciones y documentos no garantiza por sí solo resistencia a instrucciones maliciosas.
+- Nombre y formación ausentes se representan como `No especificado`. Los años indeterminables usan `0` y una aclaración en el resumen; ese valor no demuestra falta de experiencia.
+- La sesión no garantiza recuperar resultados después de cerrarla o restablecerla.
 
-La etapa 4 añade 13 pruebas con PDF sintéticos generados en memoria: texto en varias páginas, páginas vacías, entrada como bytes, cursor al final, ausencia de texto, datos dañados, protección con contraseña y fallos de lectura. El conjunto completo suma **30 pruebas satisfactorias**. PyPDF2 emite un aviso de deprecación; se conserva la dependencia indicada en el taller.
+`.gitignore` excluye `.venv`, cachés, `.env`, secretos Streamlit, PDF y datos locales en `data/`, `uploads/` y `outputs/`. `.dockerignore` limita el contexto a los archivos necesarios para ejecutar la aplicación.
 
-## Prompts de evaluación
+## Resolución de problemas
 
-`prompts/cv_prompts.py` ofrece `crear_sistema_prompts()`, una `ChatPromptTemplate` con dos variables: `texto_cv` y `descripcion_puesto`. Las instrucciones del reclutador ocupan un mensaje de sistema fijo y los documentos se insertan en un mensaje humano separado.
-
-La plantilla orienta el ajuste con los pesos del taller: experiencia 40 %, habilidades técnicas 35 %, formación/certificaciones 15 % y coherencia profesional 10 %. Solicita evidencia profesional, diferencia datos no acreditados de carencias demostradas y ordena tratar las instrucciones incrustadas en documentos como datos. Esta separación no garantiza por sí sola resistencia a instrucciones maliciosas; las pruebas actuales verifican la construcción de mensajes, no el comportamiento de un modelo real.
-
-Para nombre y formación ausentes se indica `No especificado`. Las listas de habilidades y fortalezas pueden quedar vacías. Como el contrato exige un entero, si los años no pueden determinarse se utiliza `0` como marcador, acompañado de una aclaración en `experiencia_relevante`; no debe interpretarse aisladamente como ausencia de experiencia. La futura interfaz deberá mostrar esa aclaración junto al dato.
-
-La etapa 5 añade 7 pruebas de roles, variables obligatorias, texto literal (incluidas llaves y etiquetas) y reutilización sin retener documentos. **37 pruebas totales pasaron**, sin credenciales ni llamadas a OpenAI. La calidad de las evaluaciones reales queda pendiente de la integración.
-
-## Evaluador de candidatos
-
-`services/cv_evaluator.py` expone:
-
-- `crear_evaluador_cv()`: lee `OPENAI_API_KEY` y construye `chat_prompt | modelo_estructurado`. No realiza una solicitud por sí misma.
-- `evaluar_candidato(texto_cv, descripcion_puesto)`: valida las entradas, invoca la cadena y devuelve `AnalisisCV`. Admite una cadena opcional mediante `evaluador=` para reutilización y pruebas.
-
-Se mantiene `gpt-4o-mini` y temperatura 0.2 según el taller. Se configura `with_structured_output(AnalisisCV, method="json_schema", strict=True)`, tiempo de espera de 30 segundos por solicitud y un máximo de un reintento del cliente (no un límite global de duración). Se contrastó el enfoque con la [documentación oficial de OpenAI sobre salidas estructuradas](https://developers.openai.com/api/docs/guides/structured-outputs) y el adaptador instalado de LangChain. El acceso efectivo de una cuenta al modelo solo se confirma mediante una llamada real.
-
-`ErrorConfiguracionCV` comunica falta de clave, fallos de configuración y acceso rechazado. `ErrorEvaluacionCV` comunica respuestas inválidas, cuota, conexión, tiempos de espera y otros fallos. La futura interfaz deberá capturar estos errores y detener el flujo; no se genera una puntuación alternativa. Las causas originales se conservan para diagnóstico; los mensajes destinados a la interfaz no incluyen la respuesta original ni credenciales.
-
-La etapa 6 añade 21 pruebas, incluidas solicitudes y respuestas HTTP simuladas que recorren el adaptador real de LangChain/OpenAI. **58 pruebas totales pasaron**. No se hizo tráfico hacia OpenAI ni se comprobó cuota, acceso real o calidad de evaluaciones; esa validación queda para la etapa 10. Permanece el aviso de deprecación de PyPDF2.
-
-## Verificación de la interfaz
-
-La etapa 7 añade 22 casos para las dos escalas y el flujo de interfaz con Streamlit AppTest. Se verificaron entradas ausentes, vacante con espacios, presentación del perfil y aclaración de años indeterminados, PDF inválido con el extractor real, fallos de configuración/API y el aviso de Guardar. El recorrido satisfactorio usa extracción y evaluación simuladas; los servicios se prueban también por separado. **80 pruebas totales pasaron**.
-
-Además, se inició temporalmente el servidor en `127.0.0.1:18501`: `/_stcore/health` respondió `200 / ok` y la página principal respondió HTTP 200. Se detuvo al terminar. Esta comprobación y AppTest no sustituyen una revisión visual de navegador ni una evaluación real con OpenAI, ambas pendientes de la validación final.
-
-La etapa 8 añade 8 casos de AppTest: conservación tras reruns y Guardar, invalidación por nueva vacante, cambio de contenido del PDF con el mismo nombre o retirada del archivo, ausencia de recuperación de análisis descartados, limpieza y nueva carga, fallos de reevaluación y aislamiento de sesiones. **88 pruebas totales pasaron**, sin llamadas reales a OpenAI. Permanece el aviso de deprecación de PyPDF2.
+| Problema | Qué revisar |
+| --- | --- |
+| No encuentra Python | Reabre la terminal o utiliza la ruta del intérprete instalado. |
+| No encuentra un paquete | Instala dependencias con el mismo intérprete de `.venv` usado para Streamlit. |
+| No encuentra módulos del proyecto | Ejecuta los comandos desde la raíz. |
+| Falta `OPENAI_API_KEY` | Define la variable en la terminal de la aplicación o del contenedor. Crear `.env` no basta. |
+| OpenAI rechaza el acceso o alcanza un límite | Comprueba clave, permisos del modelo y cuota. |
+| PDF vacío, protegido o ilegible | Usa una copia válida sin contraseña y con texto seleccionable. |
+| Respuesta inválida o tiempo de espera | Revisa la conexión y reintenta; no se genera una evaluación alternativa. |
+| Docker no conecta con el motor | Inicia Docker Desktop y comprueba el servidor con `docker version`. |
+| Puerto 8501 ocupado | Cambia el puerto local de Streamlit o el puerto del host publicado por Docker. |
