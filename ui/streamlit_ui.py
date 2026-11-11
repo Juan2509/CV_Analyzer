@@ -96,7 +96,7 @@ def main() -> None:
     st.write("Compara un CV con una vacante y revisa sus coincidencias y áreas de desarrollo.")
     st.info(
         "Al pulsar Analizar Candidato, el texto del CV y la descripción del puesto "
-        "se envían a OpenAI. El resultado es una estimación generada como apoyo "
+        "se envían a Google Gemini. El resultado es una estimación generada como apoyo "
         "a la revisión humana."
     )
 

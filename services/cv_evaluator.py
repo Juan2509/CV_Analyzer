@@ -1,18 +1,19 @@
-"""Evaluación estructurada de candidatos mediante LangChain y OpenAI."""
+"""Evaluación estructurada de candidatos mediante LangChain y Google Gemini."""
 
 import os
 
-from langchain_core.exceptions import OutputParserException
-from langchain_core.runnables import Runnable
-from langchain_openai import ChatOpenAI
-from openai import (
-    APIConnectionError,
-    APIError,
-    APITimeoutError,
-    AuthenticationError,
-    PermissionDeniedError,
-    RateLimitError,
+import httpx2
+from google.genai.errors import APIError
+from langchain_core.exceptions import (
+    ModelAuthenticationError,
+    ModelInvalidRequestError,
+    ModelNotFoundError,
+    ModelPermissionDeniedError,
+    ModelRateLimitError,
+    OutputParserException,
 )
+from langchain_core.runnables import Runnable
+from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import ValidationError
 
 from models.cv_model import AnalisisCV
@@ -32,27 +33,27 @@ def crear_evaluador_cv() -> Runnable:
 
     La credencial se lee del entorno del proceso, sin cargar archivos .env.
     """
-    clave = os.getenv("OPENAI_API_KEY", "").strip()
+    clave = os.getenv("GOOGLE_API_KEY", "").strip() or os.getenv("GEMINI_API_KEY", "").strip()
     if not clave:
         raise ErrorConfiguracionCV(
-            "Configura OPENAI_API_KEY en el entorno antes de analizar un CV."
+            "Configura GOOGLE_API_KEY o GEMINI_API_KEY en el entorno antes de analizar un CV."
         )
 
     try:
-        modelo = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.2,
+        modelo = ChatGoogleGenerativeAI(
+            model=os.getenv("GEMINI_MODEL", "").strip() or "gemini-3.5-flash-lite",
             api_key=clave,
+            vertexai=False,
             timeout=30,
             max_retries=1,
         )
         modelo_estructurado = modelo.with_structured_output(
-            AnalisisCV, method="json_schema", strict=True
+            AnalisisCV, method="json_schema"
         )
         return crear_sistema_prompts() | modelo_estructurado
     except Exception as error:
         raise ErrorConfiguracionCV(
-            "No se pudo preparar el evaluador. Revisa la configuración de OpenAI."
+            "No se pudo preparar el evaluador. Revisa la configuración de Gemini."
         ) from error
 
 
@@ -82,27 +83,37 @@ def evaluar_candidato(
         raise ErrorEvaluacionCV(
             "El modelo no devolvió un análisis válido. Intenta analizar nuevamente."
         ) from error
-    except (AuthenticationError, PermissionDeniedError) as error:
+    except (ModelAuthenticationError, ModelPermissionDeniedError) as error:
         raise ErrorConfiguracionCV(
-            "OpenAI rechazó el acceso. Revisa la clave y los permisos del modelo."
+            "Gemini rechazó el acceso. Revisa la clave y los permisos del modelo."
         ) from error
-    except RateLimitError as error:
-        raise ErrorEvaluacionCV(
-            "OpenAI alcanzó un límite de uso o cuota. Revisa la cuota y reintenta más tarde."
+    except ModelNotFoundError as error:
+        raise ErrorConfiguracionCV(
+            "El modelo de Gemini no está disponible. Revisa GEMINI_MODEL y el acceso de la cuenta."
         ) from error
-    except APITimeoutError as error:
+    except ModelInvalidRequestError as error:
         raise ErrorEvaluacionCV(
-            "OpenAI tardó demasiado en responder. Intenta nuevamente."
+            "Gemini rechazó la solicitud. Revisa la clave, el modelo y el tamaño del documento."
         ) from error
-    except APIConnectionError as error:
+    except ModelRateLimitError as error:
         raise ErrorEvaluacionCV(
-            "No se pudo conectar con OpenAI. Revisa la conexión e intenta nuevamente."
+            "Gemini alcanzó un límite de uso o cuota. Revisa la cuota y reintenta más tarde."
+        ) from error
+    except (httpx2.TimeoutException, TimeoutError) as error:
+        raise ErrorEvaluacionCV(
+            "Gemini tardó demasiado en responder. Intenta nuevamente."
+        ) from error
+    except (httpx2.RequestError, ConnectionError) as error:
+        raise ErrorEvaluacionCV(
+            "No se pudo conectar con Gemini. Revisa la conexión e intenta nuevamente."
         ) from error
     except APIError as error:
-        raise ErrorEvaluacionCV(
-            "OpenAI no pudo completar la evaluación. Revisa el acceso al modelo "
-            "o intenta más tarde."
-        ) from error
+        mensaje = (
+            "Gemini tardó demasiado en responder. Intenta nuevamente."
+            if error.code == 504 else
+            "Gemini no pudo completar la evaluación. Revisa el acceso al modelo o intenta más tarde."
+        )
+        raise ErrorEvaluacionCV(mensaje) from error
     except Exception as error:
         # Incluye rechazos del modelo y fallos inesperados del adaptador.
         # Se conserva la causa sin exponer datos del CV o credenciales en la UI.

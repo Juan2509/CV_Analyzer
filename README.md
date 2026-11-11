@@ -1,6 +1,6 @@
 # CV Analyzer
 
-Aplicación de Streamlit que compara un currículum en PDF con una vacante utilizando LangChain y OpenAI.
+Aplicación de Streamlit que compara un currículum en PDF con una vacante utilizando LangChain y Google Gemini.
 
 ## Objetivo y funcionamiento
 
@@ -9,7 +9,7 @@ Ayudar a revisar candidatos mediante su experiencia, formación, habilidades, fo
 1. El usuario carga un PDF con texto seleccionable y escribe la vacante.
 2. PyPDF2 extrae el texto de las páginas en memoria.
 3. LangChain prepara mensajes separados para las instrucciones y los documentos.
-4. `ChatOpenAI` utiliza `gpt-4o-mini`, temperatura `0.2` y salida estructurada con Pydantic.
+4. `ChatGoogleGenerativeAI` utiliza `gemini-3.5-flash-lite`, los valores de muestreo del modelo y salida estructurada JSON Schema con Pydantic.
 5. La interfaz muestra el nombre, formación, años y resumen de experiencia, habilidades, fortalezas, áreas de mejora, porcentaje de ajuste y recomendación.
 
 El prompt solicita estos pesos:
@@ -28,18 +28,26 @@ La **evaluación principal** utiliza 80–100: Excelente; 60–79: Bueno; 40–5
 ## Requisitos
 
 - Python 3.12 para ejecutar localmente.
-- Clave de OpenAI con acceso al modelo y cuota disponible.
+- Clave de Gemini con acceso al modelo y cuota disponible.
 - Internet para la evaluación.
 - PDF con texto seleccionable; no se realiza OCR.
 - Docker con motor Linux, solo para la alternativa con contenedores.
 
-Al pulsar **Analizar Candidato**, el texto del CV y de la vacante se envía a OpenAI. Las llamadas pueden consumir la cuota de la cuenta.
+Al pulsar **Analizar Candidato**, el texto del CV y de la vacante se envía a Google Gemini. Las llamadas pueden consumir la cuota de la cuenta.
 
 ## Ejecución local en Windows PowerShell
 
-Ejecuta los comandos desde la raíz del repositorio.
+Estos pasos utilizan la integración actual con Gemini. Si la aplicación ya está abierta, detenla con `Ctrl+C` antes de actualizar las dependencias y vuelve a iniciarla al terminar.
 
-### 1. Crear el entorno
+### 1. Entrar en el proyecto
+
+```powershell
+cd C:\Users\lickn\Desktop\CV_Analyzer
+```
+
+Si clonaste o moviste el proyecto a otra ubicación, utiliza esa ruta. Ejecuta los pasos siguientes desde la raíz, donde está `app.py`.
+
+### 2. Crear el entorno solo si no existe
 
 Comprueba Python y crea el entorno si todavía no existe:
 
@@ -48,13 +56,15 @@ python --version
 python -m venv .venv
 ```
 
+Si ya tienes la carpeta `.venv` preparada, omite su creación y continúa con la instalación de dependencias.
+
 Si Python no aparece en el PATH, abre una terminal nueva después de instalarlo. En una instalación habitual por usuario puedes usar:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" -m venv .venv
 ```
 
-### 2. Instalar dependencias
+### 3. Instalar o actualizar dependencias
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -c requirements-lock.txt
@@ -63,23 +73,43 @@ Si Python no aparece en el PATH, abre una terminal nueva después de instalarlo.
 
 `requirements.txt` declara las dependencias de ejecución y `requirements-lock.txt` restringe las versiones registradas. Se usa el intérprete directamente: no necesitas activar el entorno ni modificar la política de PowerShell.
 
-### 3. Configurar OpenAI
+Ejecuta este paso también si utilizabas la versión anterior del proyecto: ahora se requieren `langchain-google-genai` y el SDK de Google.
+
+### 4. Configurar la clave de Gemini
 
 En la misma terminal que iniciará la aplicación:
 
 ```powershell
-$env:OPENAI_API_KEY = "tu_clave_de_openai"
+$env:GOOGLE_API_KEY = "tu_clave_de_gemini"
 ```
 
-Sustituye el ejemplo por tu clave. La aplicación lee la variable del proceso y no carga automáticamente `.env`. No incluyas credenciales reales en el código ni en archivos versionados.
+Obtén tu clave en [Google AI Studio](https://aistudio.google.com/apikey) y sustituye el valor de ejemplo. La aplicación lee `GOOGLE_API_KEY` y, si está vacía o ausente, utiliza `GEMINI_API_KEY`. Si ambas tienen valor, prevalece `GOOGLE_API_KEY`. No carga automáticamente `.env`. No incluyas credenciales reales en el código ni en archivos versionados.
 
-### 4. Iniciar Streamlit
+La asignación con `$env:` corresponde a esa sesión de PowerShell. Si abres otra terminal para iniciar la aplicación, configura la clave nuevamente allí. Una clave de OpenAI no sirve para esta integración.
+
+No es necesario definir un modelo para ejecutar la aplicación. Si quieres usar el predeterminado, continúa con el paso 5.
+
+Para utilizar otro modelo disponible en tu cuenta, configura opcionalmente:
+
+```powershell
+$env:GEMINI_MODEL = "gemini-3.6-flash"
+```
+
+Sin esa variable se utiliza `gemini-3.5-flash-lite`. El acceso y la cuota dependen de tu cuenta. La integración usa Gemini Developer API, sin requerir configuración de Vertex AI.
+
+### 5. Iniciar Streamlit
 
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py --server.port=8501 --browser.gatherUsageStats=false
 ```
 
 Abre <http://localhost:8501>. Detén el servidor con `Ctrl+C`. Si el puerto está ocupado, cambia `--server.port=8501` por otro valor.
+
+### 6. Realizar el análisis
+
+Carga un CV en PDF con texto seleccionable, escribe la descripción de la vacante y pulsa **Analizar Candidato**. La primera evaluación real requiere una clave válida y cuota disponible en Gemini. Consulta la sección Uso para revisar el resultado y limpiar el formulario.
+
+En las siguientes ejecuciones, basta con entrar en la carpeta, configurar la clave en esa terminal e iniciar Streamlit; reinstala dependencias cuando cambien los archivos `requirements`.
 
 ## Ejecución con Docker
 
@@ -104,13 +134,13 @@ El Dockerfile utiliza Python 3.12, instala las dependencias restringidas, compru
 
 ### 2. Iniciar el contenedor
 
-Con `OPENAI_API_KEY` definida en esa terminal:
+Con `GOOGLE_API_KEY` definida en esa terminal:
 
 ```powershell
-docker run --rm --name cv-analyzer -p 127.0.0.1:8501:8501 -e OPENAI_API_KEY cv-analyzer:local
+docker run --rm --name cv-analyzer -p 127.0.0.1:8501:8501 -e GOOGLE_API_KEY cv-analyzer:local
 ```
 
-Abre <http://localhost:8501>. La clave se pasa al ejecutar y no se incorpora a la imagen. Para otro puerto del equipo, publica `-p 127.0.0.1:8502:8501` y abre <http://localhost:8502>.
+Abre <http://localhost:8501>. La clave se pasa al ejecutar y no se incorpora a la imagen. Si usas la variable alternativa, sustituye `-e GOOGLE_API_KEY` por `-e GEMINI_API_KEY`. Para cambiar el modelo, añade `-e GEMINI_MODEL` después de definirlo en PowerShell. Para otro puerto del equipo, publica `-p 127.0.0.1:8502:8501` y abre <http://localhost:8502>.
 
 ### 3. Comprobar y detener
 
@@ -154,7 +184,7 @@ CV_Analyzer/
 ├── prompts/cv_prompts.py     # Instrucciones de evaluación
 ├── services/
 │   ├── pdf_processor.py      # Extracción de texto en memoria
-│   └── cv_evaluator.py       # Integración con LangChain y OpenAI
+│   └── cv_evaluator.py       # Integración con LangChain y Gemini
 ├── ui/streamlit_ui.py        # Interfaz, escalas y estado de sesión
 ├── tests/                   # Pruebas y generador de PDF sintéticos
 ├── requirements.txt         # Dependencias de ejecución
@@ -175,9 +205,11 @@ Instala las dependencias de desarrollo y ejecuta las pruebas:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-La última validación completó **94 pruebas satisfactorias**, con datos sintéticos y sin solicitudes reales a OpenAI. Incluye esquema, PDF, prompts, errores del evaluador, escalas, interfaz, sesión y recorrido completo con HTTP simulado. `pip check` no detectó conflictos. PyPDF2 emite un aviso de deprecación; se conserva la dependencia utilizada en el taller.
+La validación de la migración a Gemini completó **101 pruebas satisfactorias** y `pip check` sin conflictos. Las pruebas usan datos sintéticos y respuestas HTTP simuladas de Gemini; no requieren una clave real ni consumen cuota. Incluyen esquema, PDF, prompts, errores del evaluador, selección de clave y modelo, escalas, interfaz, sesión y recorrido completo. PyPDF2 emite un aviso de deprecación; se conserva la dependencia utilizada en el taller.
 
-El servidor local respondió HTTP 200 en la página principal y en salud. La revisión visual en navegador no se completó. La construcción Docker se inició durante la validación, pero no se confirmó su finalización ni la ejecución del contenedor. La prueba real de acceso, cuota y calidad de respuesta de OpenAI también está pendiente.
+El servidor local respondió HTTP 200 en la página principal y en salud durante la implementación inicial. La revisión visual en navegador no se completó. La construcción Docker anterior no confirmó la ejecución del contenedor; tras cambiar a Gemini es necesario reconstruir la imagen. La prueba real de acceso, cuota y calidad de respuesta de Gemini también está pendiente.
+
+Referencias de la integración: [ChatGoogleGenerativeAI en LangChain](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai) y [Gemini 3.5 Flash-Lite](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite).
 
 ## Limitaciones y datos locales
 
@@ -197,8 +229,9 @@ El servidor local respondió HTTP 200 en la página principal y en salud. La rev
 | No encuentra Python | Reabre la terminal o utiliza la ruta del intérprete instalado. |
 | No encuentra un paquete | Instala dependencias con el mismo intérprete de `.venv` usado para Streamlit. |
 | No encuentra módulos del proyecto | Ejecuta los comandos desde la raíz. |
-| Falta `OPENAI_API_KEY` | Define la variable en la terminal de la aplicación o del contenedor. Crear `.env` no basta. |
-| OpenAI rechaza el acceso o alcanza un límite | Comprueba clave, permisos del modelo y cuota. |
+| Falta `GOOGLE_API_KEY` o `GEMINI_API_KEY` | Define una de ellas en la terminal de la aplicación o del contenedor. Crear `.env` no basta. |
+| Gemini rechaza el acceso o alcanza un límite | Comprueba clave, permisos del modelo y cuota en Google AI Studio. |
+| Modelo no disponible | Revisa `GEMINI_MODEL` y utiliza un identificador accesible para tu cuenta. |
 | PDF vacío, protegido o ilegible | Usa una copia válida sin contraseña y con texto seleccionable. |
 | Respuesta inválida o tiempo de espera | Revisa la conexión y reintenta; no se genera una evaluación alternativa. |
 | Docker no conecta con el motor | Inicia Docker Desktop y comprueba el servidor con `docker version`. |

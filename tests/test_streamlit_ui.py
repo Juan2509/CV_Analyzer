@@ -58,10 +58,10 @@ def iniciar_con_entradas():
     return app
 
 
-def test_inicio_no_invoca_servicios_y_explica_envio_a_openai(servicios):
+def test_inicio_no_invoca_servicios_y_explica_envio_a_gemini(servicios):
     app = AppTest.from_file(APP_PATH).run()
     assert not app.exception
-    assert "se envían a OpenAI" in app.info[0].value
+    assert "se envían a Google Gemini" in app.info[0].value
     assert not app.metric
     for servicio in servicios:
         servicio.assert_not_called()

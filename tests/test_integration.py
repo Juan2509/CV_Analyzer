@@ -3,9 +3,9 @@
 import json
 from pathlib import Path
 
-import httpx
+import httpx2 as httpx
 import pytest
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from streamlit.testing.v1 import AppTest
 
 from services import cv_evaluator
@@ -24,7 +24,7 @@ def transporte(monkeypatch):
         solicitudes.append(json.loads(request.content))
         if estado["codigo"] != 200:
             return httpx.Response(estado["codigo"], json={"error": {
-                "message": "Fallo sintético", "type": "api_error", "code": None,
+                "message": "Fallo sintético", "status": "ERROR", "code": estado["codigo"],
             }})
         datos = {
             "nombre_candidato": "Perfil sintetico", "experiencia_años": 3,
@@ -35,19 +35,20 @@ def transporte(monkeypatch):
             "porcentaje_ajuste": 101 if estado["invalido"] else 65,
         }
         return httpx.Response(200, json={
-            "id": "chatcmpl-integracion", "object": "chat.completion", "created": 0,
-            "model": "gpt-4o-mini", "choices": [{"index": 0, "finish_reason": "stop",
-            "message": {"role": "assistant", "content": json.dumps(datos)}}],
+            "candidates": [{"index": 0, "finishReason": "STOP", "content": {
+                "role": "model", "parts": [{"text": json.dumps(datos)}],
+            }}],
         })
 
-    with httpx.Client(transport=httpx.MockTransport(responder)) as cliente:
+    with httpx.MockTransport(responder) as transporte_http:
         def construir(**kwargs):
             # No esperar entre reintentos en pruebas de error HTTP simulado.
-            kwargs["max_retries"] = 0
-            return ChatOpenAI(**kwargs, http_client=cliente)
+            kwargs["max_retries"] = 1
+            return ChatGoogleGenerativeAI(**kwargs, client_args={"transport": transporte_http})
 
-        monkeypatch.setattr(cv_evaluator, "ChatOpenAI", construir)
-        monkeypatch.setenv("OPENAI_API_KEY", "clave-sintetica-sin-acceso")
+        monkeypatch.setattr(cv_evaluator, "ChatGoogleGenerativeAI", construir)
+        monkeypatch.setenv("GOOGLE_API_KEY", "clave-sintetica-sin-acceso")
+        monkeypatch.setenv("GOOGLE_GENAI_HTTP_CLIENT", "httpx2")
         monkeypatch.setenv("LANGSMITH_TRACING", "false")
         monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
         yield solicitudes, estado
@@ -72,7 +73,7 @@ def test_recorrido_completo_con_pdf_y_adaptador_reales(transporte):
     assert [m.value for m in app.metric] == ["65 %", "Bueno"]
     assert any(i.value == "Candidato con potencial" for i in app.info)
     assert len(solicitudes) == 1
-    datos_enviados = solicitudes[0]["messages"][1]["content"]
+    datos_enviados = solicitudes[0]["contents"][0]["parts"][0]["text"]
     assert "Perfil sintetico - Ingenieria de Sistemas\n\n3 anos de Python" in datos_enviados
     assert "Vacante Python: APIs REST" in datos_enviados
     app.button(key="guardar").click().run()
@@ -114,9 +115,10 @@ def test_pdf_sin_texto_no_llega_al_transporte(transporte):
 
 def test_ausencia_de_clave_llega_a_interfaz_sin_solicitud(transporte, monkeypatch):
     solicitudes, _ = transporte
-    monkeypatch.delenv("OPENAI_API_KEY")
+    monkeypatch.delenv("GOOGLE_API_KEY")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     app = cargar_cv()
     assert not app.exception
-    assert "OPENAI_API_KEY" in app.error[0].value
+    assert "GOOGLE_API_KEY" in app.error[0].value
     assert not app.metric
     assert solicitudes == []

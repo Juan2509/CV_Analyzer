@@ -11,7 +11,7 @@ WORKDIR /app
 COPY requirements.txt requirements-lock.txt ./
 RUN python -m pip install --no-cache-dir -r requirements.txt -c requirements-lock.txt \
     && python -m pip check \
-    && python -c "import streamlit, PyPDF2, langchain_openai, langchain_core, pydantic" \
+    && python -c "import streamlit, PyPDF2, langchain_google_genai, langchain_core, pydantic" \
     && useradd --create-home --uid 10001 app
 
 COPY app.py ./

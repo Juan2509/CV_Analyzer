@@ -1,12 +1,11 @@
-"""Contrato del evaluador y adaptador OpenAI sin tráfico de red."""
+"""Contrato del evaluador y adaptador Gemini sin tráfico de red."""
 
 import json
 
-import httpx
+import httpx2 as httpx
 import pytest
 from langchain_core.runnables import RunnableLambda
-from langchain_openai import ChatOpenAI
-from openai import APIConnectionError, APITimeoutError
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from models.cv_model import AnalisisCV
 from services import cv_evaluator
@@ -34,17 +33,57 @@ def datos():
 
 @pytest.mark.parametrize("clave", [None, "", "   "])
 def test_exige_clave_sin_construir_cliente(monkeypatch, clave):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     if clave is None:
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     else:
-        monkeypatch.setenv("OPENAI_API_KEY", clave)
+        monkeypatch.setenv("GOOGLE_API_KEY", clave)
 
     def cliente_no_esperado(**kwargs):
         pytest.fail("No debe construir el cliente sin una clave")
 
-    monkeypatch.setattr(cv_evaluator, "ChatOpenAI", cliente_no_esperado)
-    with pytest.raises(ErrorConfiguracionCV, match="OPENAI_API_KEY"):
+    monkeypatch.setattr(cv_evaluator, "ChatGoogleGenerativeAI", cliente_no_esperado)
+    with pytest.raises(ErrorConfiguracionCV, match="GOOGLE_API_KEY"):
         crear_evaluador_cv()
+
+
+@pytest.mark.parametrize(
+    "google,gemini,esperada",
+    [("clave-google", "clave-gemini", "clave-google"),
+     ("", "clave-gemini", "clave-gemini"),
+     ("   ", " clave-gemini ", "clave-gemini")],
+)
+def test_clave_alternativa_y_prioridad_de_google(monkeypatch, datos, google, gemini, esperada):
+    configuracion = {}
+
+    class ModeloSimulado:
+        def with_structured_output(self, schema, **kwargs):
+            assert schema is AnalisisCV
+            assert kwargs == {"method": "json_schema"}
+            return RunnableLambda(lambda _: datos)
+
+    def construir(**kwargs):
+        configuracion.update(kwargs)
+        return ModeloSimulado()
+
+    monkeypatch.setenv("GOOGLE_API_KEY", google)
+    monkeypatch.setenv("GEMINI_API_KEY", gemini)
+    monkeypatch.setattr(cv_evaluator, "ChatGoogleGenerativeAI", construir)
+    resultado = evaluar_candidato("CV", "Vacante")
+    assert resultado.porcentaje_ajuste == 65
+    assert configuracion["api_key"] == esperada
+
+
+def test_permite_configurar_modelo_sin_cambiar_el_contrato(monkeypatch, datos):
+    respuesta = {"candidates": [{"index": 0, "finishReason": "STOP", "content": {
+        "role": "model", "parts": [{"text": json.dumps(datos)}],
+    }}]}
+    cliente, _, configuraciones = preparar_transporte(monkeypatch, respuesta)
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.6-flash")
+    with cliente:
+        resultado = evaluar_candidato("CV", "Vacante")
+    assert configuraciones[0]["model"] == "gemini-3.6-flash"
+    assert resultado.model_dump() == datos
 
 
 @pytest.mark.parametrize("cv,puesto", [("", "Puesto"), ("  ", "Puesto"), ("CV", ""), ("CV", "  ")])
@@ -92,10 +131,10 @@ def test_conserva_causa_sin_exponer_su_contenido():
 
 @pytest.mark.parametrize(
     "tipo_error,mensaje",
-    [(APIConnectionError, "conectar"), (APITimeoutError, "tardó demasiado")],
+    [(httpx.ConnectError, "conectar"), (httpx.ReadTimeout, "tardó demasiado")],
 )
 def test_comunica_fallos_de_conexion_y_tiempo(tipo_error, mensaje):
-    causa = tipo_error(request=httpx.Request("POST", "https://example.invalid"))
+    causa = tipo_error("Error simulado", request=httpx.Request("POST", "https://example.invalid"))
 
     def fallar(_):
         raise causa
@@ -106,12 +145,12 @@ def test_comunica_fallos_de_conexion_y_tiempo(tipo_error, mensaje):
 
 
 def test_comunica_fallo_al_configurar_cliente(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "clave-ficticia")
+    monkeypatch.setenv("GOOGLE_API_KEY", "clave-ficticia")
 
     def fallar(**kwargs):
         raise ValueError("Configuración inválida simulada")
 
-    monkeypatch.setattr(cv_evaluator, "ChatOpenAI", fallar)
+    monkeypatch.setattr(cv_evaluator, "ChatGoogleGenerativeAI", fallar)
     with pytest.raises(ErrorConfiguracionCV, match="preparar") as error:
         crear_evaluador_cv()
     assert error.value.__cause__ is not None
@@ -126,25 +165,25 @@ def preparar_transporte(monkeypatch, respuesta, estado=200):
         solicitudes.append(json.loads(request.content))
         return httpx.Response(estado, json=respuesta)
 
-    cliente = httpx.Client(transport=httpx.MockTransport(responder))
+    cliente = httpx.MockTransport(responder)
 
     def construir(**kwargs):
         configuraciones.append(kwargs)
-        return ChatOpenAI(**kwargs, http_client=cliente)
+        return ChatGoogleGenerativeAI(**kwargs, client_args={"transport": cliente})
 
-    monkeypatch.setenv("OPENAI_API_KEY", "clave-ficticia-sin-acceso")
+    monkeypatch.setenv("GOOGLE_API_KEY", "clave-ficticia-sin-acceso")
+    monkeypatch.setenv("GOOGLE_GENAI_HTTP_CLIENT", "httpx2")
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
-    monkeypatch.setattr(cv_evaluator, "ChatOpenAI", construir)
+    monkeypatch.setattr(cv_evaluator, "ChatGoogleGenerativeAI", construir)
     return cliente, solicitudes, configuraciones
 
 
 def test_adaptador_real_con_salida_json_schema_simulada(monkeypatch, datos):
     respuesta = {
-        "id": "chatcmpl-prueba", "object": "chat.completion", "created": 0,
-        "model": "gpt-4o-mini",
-        "choices": [{"index": 0, "finish_reason": "stop", "message": {
-            "role": "assistant", "content": json.dumps(datos),
+        "candidates": [{"index": 0, "finishReason": "STOP", "content": {
+            "role": "model", "parts": [{"text": json.dumps(datos)}],
         }}],
     }
     cliente, solicitudes, configuraciones = preparar_transporte(monkeypatch, respuesta)
@@ -154,27 +193,30 @@ def test_adaptador_real_con_salida_json_schema_simulada(monkeypatch, datos):
         resultado = evaluar_candidato("CV Python", "Vacante APIs", evaluador=cadena)
 
     assert resultado.model_dump() == datos
-    assert configuraciones[0]["temperature"] == 0.2
+    assert "temperature" not in configuraciones[0]
     assert configuraciones[0]["timeout"] == 30
     cuerpo = solicitudes[0]
-    assert cuerpo["model"] == "gpt-4o-mini"
-    assert cuerpo["response_format"]["type"] == "json_schema"
-    esquema = cuerpo["response_format"]["json_schema"]
-    assert esquema["strict"] is True
-    assert set(esquema["schema"]["required"]) == set(datos)
-    assert esquema["schema"]["additionalProperties"] is False
-    assert [m["role"] for m in cuerpo["messages"]] == ["system", "user"]
-    assert "CV Python" in cuerpo["messages"][1]["content"]
-    assert "Vacante APIs" in cuerpo["messages"][1]["content"]
+    assert configuraciones[0]["model"] == "gemini-3.5-flash-lite"
+    assert configuraciones[0]["vertexai"] is False
+    assert cuerpo["generationConfig"]["responseMimeType"] == "application/json"
+    esquema = cuerpo["generationConfig"]["responseJsonSchema"]
+    assert set(esquema["required"]) == set(datos)
+    assert "systemInstruction" in cuerpo
+    assert cuerpo["contents"][0]["role"] == "user"
+    assert "CV Python" in cuerpo["contents"][0]["parts"][0]["text"]
+    assert "Vacante APIs" in cuerpo["contents"][0]["parts"][0]["text"]
 
 
 @pytest.mark.parametrize(
     "estado,tipo_error,mensaje",
     [(401, ErrorConfiguracionCV, "acceso"), (403, ErrorConfiguracionCV, "acceso"),
-     (429, ErrorEvaluacionCV, "cuota"), (500, ErrorEvaluacionCV, "completar")],
+     (404, ErrorConfiguracionCV, "GEMINI_MODEL"),
+     (400, ErrorEvaluacionCV, "solicitud"),
+     (429, ErrorEvaluacionCV, "cuota"), (500, ErrorEvaluacionCV, "completar"),
+     (504, ErrorEvaluacionCV, "tardó demasiado")],
 )
 def test_traduce_errores_http_sin_devolver_evaluaciones(monkeypatch, estado, tipo_error, mensaje):
-    respuesta = {"error": {"message": "Error simulado", "type": "api_error", "code": None}}
+    respuesta = {"error": {"message": "Error simulado", "status": "ERROR", "code": estado}}
     cliente, _, _ = preparar_transporte(monkeypatch, respuesta, estado)
     with cliente, pytest.raises(tipo_error, match=mensaje) as error:
         evaluar_candidato("CV", "Vacante")
@@ -183,11 +225,7 @@ def test_traduce_errores_http_sin_devolver_evaluaciones(monkeypatch, estado, tip
 
 def test_rechazo_del_modelo_no_se_convierte_en_puntuacion(monkeypatch):
     respuesta = {
-        "id": "chatcmpl-rechazo", "object": "chat.completion", "created": 0,
-        "model": "gpt-4o-mini",
-        "choices": [{"index": 0, "finish_reason": "stop", "message": {
-            "role": "assistant", "content": None, "refusal": "Rechazo simulado",
-        }}],
+        "candidates": [], "promptFeedback": {"blockReason": "SAFETY"},
     }
     cliente, _, _ = preparar_transporte(monkeypatch, respuesta)
     with cliente, pytest.raises(ErrorEvaluacionCV) as error:
