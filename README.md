@@ -2,7 +2,7 @@
 
 Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
 
-**Estado actual:** etapas 1 a 3 completadas: alcance documentado, entorno verificado y modelo de análisis implementado. El flujo de la aplicación aún está pendiente.
+**Estado actual:** etapas 1 a 4 completadas: alcance documentado, entorno verificado, modelo de análisis y extracción PDF implementados. La integración con el modelo y la interfaz aún están pendientes.
 
 ## Documentación
 
@@ -72,3 +72,11 @@ Para ejecutar las pruebas desde la raíz:
 ```
 
 La etapa 3 se verificó con 17 pruebas satisfactorias de datos válidos, límites, campos ausentes y tipos de elementos de listas. No requieren credenciales ni llamadas a OpenAI.
+
+## Extracción de PDF
+
+`services/pdf_processor.py` implementa `extraer_texto_pdf(archivo_pdf)`: acepta bytes o un archivo binario abierto (como UploadedFile de Streamlit), extrae texto en memoria y separa páginas con dos saltos de línea. No cierra el archivo recibido ni realiza OCR.
+
+Los documentos ilegibles, sin texto extraíble o protegidos generan `ErrorProcesamientoPDF`. La futura interfaz deberá capturar esa excepción, mostrar su mensaje y detener el flujo antes de evaluar. A diferencia de la referencia, los mensajes de error no se devuelven como si fueran texto extraído.
+
+La etapa 4 añade 13 pruebas con PDF sintéticos generados en memoria: texto en varias páginas, páginas vacías, entrada como bytes, cursor al final, ausencia de texto, datos dañados, protección con contraseña y fallos de lectura. El conjunto completo suma **30 pruebas satisfactorias**. PyPDF2 emite un aviso de deprecación; se conserva la dependencia indicada en el taller.

@@ -81,6 +81,8 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 ## Etapa 4. Implementar la extracción del PDF
 
+**Estado:** completada. `extraer_texto_pdf()` procesa bytes o archivos binarios en memoria, separa páginas y comunica documentos inválidos, sin texto o protegidos mediante `ErrorProcesamientoPDF`. Se verificaron 13 casos nuevos y las 30 pruebas del proyecto pasaron. Se mantiene PyPDF2 por correspondencia con el taller; emite un aviso de deprecación.
+
 **Archivos:** `services/pdf_processor.py` y pruebas de extracción.
 
 **Trabajo:** implementar `extraer_texto_pdf()` con PyPDF2, leer el archivo en memoria, recorrer páginas y separar su texto. Gestionar páginas sin texto, documentos vacíos, PDF dañados y archivos que no pueden leerse. Comunicar el fallo de extracción de forma que la interfaz pueda detener el análisis; nunca enviar un mensaje de error al modelo como si fuera texto del candidato.
