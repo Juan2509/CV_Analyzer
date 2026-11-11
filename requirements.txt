@@ -1,0 +1,6 @@
+# Direct runtime dependencies. requirements-lock.txt records verified versions.
+streamlit
+PyPDF2
+langchain-openai
+langchain-core
+pydantic
