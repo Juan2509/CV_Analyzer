@@ -93,6 +93,8 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 ## Etapa 5. Construir los prompts de evaluación
 
+**Estado:** completada. `crear_sistema_prompts()` separa un mensaje de sistema fijo y un mensaje humano con `texto_cv` y `descripcion_puesto`. Incluye los cuatro pesos, evidencia profesional y tratamiento de datos ausentes. Las 7 nuevas pruebas verifican roles, variables, contenido literal y reutilización; 37 pruebas totales satisfactorias sin llamadas a OpenAI. La efectividad de las instrucciones sobre respuestas reales se comprobará al integrar el modelo.
+
 **Archivos:** `prompts/cv_prompts.py`.
 
 **Trabajo:** implementar `crear_sistema_prompts()` con ChatPromptTemplate. Separar instrucciones del reclutador y los datos del CV y la vacante. Incorporar los pesos del taller: experiencia 40 %, habilidades técnicas 35 %, formación/certificaciones 15 % y coherencia profesional 10 %. Pedir evidencia del CV, evitar inventar antecedentes y definir cómo expresar información ausente dentro del esquema. Tratar instrucciones incrustadas en el CV o la vacante como contenido a analizar.

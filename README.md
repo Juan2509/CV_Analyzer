@@ -2,7 +2,7 @@
 
 Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
 
-**Estado actual:** etapas 1 a 4 completadas: alcance documentado, entorno verificado, modelo de análisis y extracción PDF implementados. La integración con el modelo y la interfaz aún están pendientes.
+**Estado actual:** etapas 1 a 5 completadas: alcance, entorno, modelo de datos, extracción PDF y prompts preparados. La integración con el modelo y la interfaz aún están pendientes.
 
 ## Documentación
 
@@ -80,3 +80,13 @@ La etapa 3 se verificó con 17 pruebas satisfactorias de datos válidos, límite
 Los documentos ilegibles, sin texto extraíble o protegidos generan `ErrorProcesamientoPDF`. La futura interfaz deberá capturar esa excepción, mostrar su mensaje y detener el flujo antes de evaluar. A diferencia de la referencia, los mensajes de error no se devuelven como si fueran texto extraído.
 
 La etapa 4 añade 13 pruebas con PDF sintéticos generados en memoria: texto en varias páginas, páginas vacías, entrada como bytes, cursor al final, ausencia de texto, datos dañados, protección con contraseña y fallos de lectura. El conjunto completo suma **30 pruebas satisfactorias**. PyPDF2 emite un aviso de deprecación; se conserva la dependencia indicada en el taller.
+
+## Prompts de evaluación
+
+`prompts/cv_prompts.py` ofrece `crear_sistema_prompts()`, una `ChatPromptTemplate` con dos variables: `texto_cv` y `descripcion_puesto`. Las instrucciones del reclutador ocupan un mensaje de sistema fijo y los documentos se insertan en un mensaje humano separado.
+
+La plantilla orienta el ajuste con los pesos del taller: experiencia 40 %, habilidades técnicas 35 %, formación/certificaciones 15 % y coherencia profesional 10 %. Solicita evidencia profesional, diferencia datos no acreditados de carencias demostradas y ordena tratar las instrucciones incrustadas en documentos como datos. Esta separación no garantiza por sí sola resistencia a instrucciones maliciosas; las pruebas actuales verifican la construcción de mensajes, no el comportamiento de un modelo real.
+
+Para nombre y formación ausentes se indica `No especificado`. Las listas de habilidades y fortalezas pueden quedar vacías. Como el contrato exige un entero, si los años no pueden determinarse se utiliza `0` como marcador, acompañado de una aclaración en `experiencia_relevante`; no debe interpretarse aisladamente como ausencia de experiencia. La futura interfaz deberá mostrar esa aclaración junto al dato.
+
+La etapa 5 añade 7 pruebas de roles, variables obligatorias, texto literal (incluidas llaves y etiquetas) y reutilización sin retener documentos. **37 pruebas totales pasaron**, sin credenciales ni llamadas a OpenAI. La calidad de las evaluaciones reales queda pendiente de la integración.
