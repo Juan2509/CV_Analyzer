@@ -119,6 +119,8 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 ## Etapa 7. Construir la interfaz y conectar el flujo
 
+**Estado:** completada. `app.py` y `ui/streamlit_ui.py` conectan formulario, extracción, evaluación y presentación. Se verificaron 22 casos nuevos (AppTest con servicios simulados, errores y límites de escalas), con 80 pruebas totales satisfactorias. El servidor se inició temporalmente en localhost y respondió HTTP 200 tanto en salud como en la página principal; después se detuvo. No se hizo una evaluación real ni una inspección visual de navegador. El estado de sesión y Limpiar siguen reservados a la etapa 8.
+
 **Archivos:** `app.py` y `ui/streamlit_ui.py`.
 
 **Trabajo:** crear el punto de entrada y `main()`, carga de PDF, descripción del puesto, botón Analizar Candidato e indicador de procesamiento. Validar ambas entradas y rechazar descripciones con solo espacios. Conectar extracción, evaluación y presentación. Mostrar el perfil, educación, experiencia, habilidades, fortalezas, áreas de mejora y porcentaje.

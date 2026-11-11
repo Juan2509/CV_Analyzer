@@ -2,7 +2,7 @@
 
 Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
 
-**Estado actual:** etapas 1 a 6 completadas con pruebas locales: alcance, entorno, datos, PDF, prompts y evaluador implementados. La interfaz y la verificación con una cuenta real aún están pendientes.
+**Estado actual:** etapas 1 a 7 completadas con pruebas locales, incluida la interfaz Streamlit. La conservación del resultado durante la sesión, Docker y la verificación con una cuenta real aún están pendientes.
 
 ## Documentación
 
@@ -55,7 +55,26 @@ La clave se configura en el entorno del proceso. Un archivo `.env` no se carga a
 
 `.gitignore` excluye entornos virtuales, cachés, secretos, instaladores locales en `.tools/`, PDF y las carpetas `uploads/`, `outputs/` y `data/`. Guarda los CV y resultados locales dentro de esas carpetas. Los datos sintéticos necesarios para pruebas se incorporarán expresamente en su etapa.
 
-Las instrucciones para iniciar la aplicación y ejecutarla con Docker se incorporarán cuando existan y se hayan comprobado sus puntos de entrada.
+## Iniciar la aplicación
+
+Desde la raíz del repositorio, con la clave configurada en esa terminal:
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.port=8501 --browser.gatherUsageStats=false
+```
+
+Abre <http://localhost:8501>. Para detenerla, pulsa `Ctrl+C` en la terminal. Si el puerto está ocupado, cambia `--server.port`.
+
+1. Carga un PDF con texto seleccionable.
+2. Describe requisitos, responsabilidades y habilidades deseables de la vacante.
+3. Pulsa **Analizar Candidato**. La aplicación extrae el PDF y solicita la evaluación a OpenAI.
+4. Revisa el perfil, la experiencia, la formación, las listas y ambas clasificaciones.
+
+El formulario valida las entradas y muestra los fallos de extracción o evaluación sin inventar puntuaciones. El ajuste principal y la recomendación usan escalas diferentes: 65 % se presenta como **Bueno** y **Candidato con potencial**. El aviso previo explica que los textos se envían a OpenAI y que el análisis apoya la revisión humana.
+
+**Guardar Análisis** solo muestra un aviso de funcionalidad en desarrollo. En esta etapa el resultado se muestra durante la ejecución del análisis y puede desaparecer al interactuar de nuevo, incluido al pulsar Guardar. La conservación temporal del resultado y el botón Limpiar se implementarán en la etapa 8. No existe exportación ni almacenamiento duradero.
+
+La ejecución con Docker se documentará y comprobará en la etapa 9.
 
 ## Verificación del entorno
 
@@ -103,3 +122,9 @@ Se mantiene `gpt-4o-mini` y temperatura 0.2 según el taller. Se configura `with
 `ErrorConfiguracionCV` comunica falta de clave, fallos de configuración y acceso rechazado. `ErrorEvaluacionCV` comunica respuestas inválidas, cuota, conexión, tiempos de espera y otros fallos. La futura interfaz deberá capturar estos errores y detener el flujo; no se genera una puntuación alternativa. Las causas originales se conservan para diagnóstico; los mensajes destinados a la interfaz no incluyen la respuesta original ni credenciales.
 
 La etapa 6 añade 21 pruebas, incluidas solicitudes y respuestas HTTP simuladas que recorren el adaptador real de LangChain/OpenAI. **58 pruebas totales pasaron**. No se hizo tráfico hacia OpenAI ni se comprobó cuota, acceso real o calidad de evaluaciones; esa validación queda para la etapa 10. Permanece el aviso de deprecación de PyPDF2.
+
+## Verificación de la interfaz
+
+La etapa 7 añade 22 casos para las dos escalas y el flujo de interfaz con Streamlit AppTest. Se verificaron entradas ausentes, vacante con espacios, presentación del perfil y aclaración de años indeterminados, PDF inválido con el extractor real, fallos de configuración/API y el aviso de Guardar. El recorrido satisfactorio usa extracción y evaluación simuladas; los servicios se prueban también por separado. **80 pruebas totales pasaron**.
+
+Además, se inició temporalmente el servidor en `127.0.0.1:18501`: `/_stcore/health` respondió `200 / ok` y la página principal respondió HTTP 200. Se detuvo al terminar. Esta comprobación y AppTest no sustituyen una revisión visual de navegador ni una evaluación real con OpenAI, ambas pendientes de la validación final.
