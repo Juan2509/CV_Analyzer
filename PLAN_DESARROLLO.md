@@ -105,6 +105,8 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 ## Etapa 6. Integrar LangChain y OpenAI
 
+**Estado:** completada con pruebas locales. `crear_evaluador_cv()` construye la cadena con `gpt-4o-mini`, temperatura 0.2 y salida JSON Schema estricta; `evaluar_candidato()` devuelve `AnalisisCV` o errores explícitos. Se verificaron 21 casos nuevos, incluidos transporte HTTP simulado con el adaptador real, validación, acceso, cuota, conexión, tiempo de espera y rechazo. Las 58 pruebas pasaron. La llamada real y el acceso de la cuenta se comprobarán en la integración final con credenciales configuradas.
+
 **Archivos:** `services/cv_evaluator.py` y pruebas del evaluador.
 
 **Trabajo:** implementar `crear_evaluador_cv()` con la configuración indicada en el taller (`gpt-4o-mini`, temperatura 0.2), sujeto a comprobar su disponibilidad y compatibilidad al implementar. Aplicar `with_structured_output(AnalisisCV)` y componer `chat_prompt | modelo_estructurado`. Implementar `evaluar_candidato()` y gestionar falta de configuración, fallo de API y respuesta inválida con mensajes comprensibles.

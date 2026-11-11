@@ -2,7 +2,7 @@
 
 Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
 
-**Estado actual:** etapas 1 a 5 completadas: alcance, entorno, modelo de datos, extracción PDF y prompts preparados. La integración con el modelo y la interfaz aún están pendientes.
+**Estado actual:** etapas 1 a 6 completadas con pruebas locales: alcance, entorno, datos, PDF, prompts y evaluador implementados. La interfaz y la verificación con una cuenta real aún están pendientes.
 
 ## Documentación
 
@@ -90,3 +90,16 @@ La plantilla orienta el ajuste con los pesos del taller: experiencia 40 %, habil
 Para nombre y formación ausentes se indica `No especificado`. Las listas de habilidades y fortalezas pueden quedar vacías. Como el contrato exige un entero, si los años no pueden determinarse se utiliza `0` como marcador, acompañado de una aclaración en `experiencia_relevante`; no debe interpretarse aisladamente como ausencia de experiencia. La futura interfaz deberá mostrar esa aclaración junto al dato.
 
 La etapa 5 añade 7 pruebas de roles, variables obligatorias, texto literal (incluidas llaves y etiquetas) y reutilización sin retener documentos. **37 pruebas totales pasaron**, sin credenciales ni llamadas a OpenAI. La calidad de las evaluaciones reales queda pendiente de la integración.
+
+## Evaluador de candidatos
+
+`services/cv_evaluator.py` expone:
+
+- `crear_evaluador_cv()`: lee `OPENAI_API_KEY` y construye `chat_prompt | modelo_estructurado`. No realiza una solicitud por sí misma.
+- `evaluar_candidato(texto_cv, descripcion_puesto)`: valida las entradas, invoca la cadena y devuelve `AnalisisCV`. Admite una cadena opcional mediante `evaluador=` para reutilización y pruebas.
+
+Se mantiene `gpt-4o-mini` y temperatura 0.2 según el taller. Se configura `with_structured_output(AnalisisCV, method="json_schema", strict=True)`, tiempo de espera de 30 segundos por solicitud y un máximo de un reintento del cliente (no un límite global de duración). Se contrastó el enfoque con la [documentación oficial de OpenAI sobre salidas estructuradas](https://developers.openai.com/api/docs/guides/structured-outputs) y el adaptador instalado de LangChain. El acceso efectivo de una cuenta al modelo solo se confirma mediante una llamada real.
+
+`ErrorConfiguracionCV` comunica falta de clave, fallos de configuración y acceso rechazado. `ErrorEvaluacionCV` comunica respuestas inválidas, cuota, conexión, tiempos de espera y otros fallos. La futura interfaz deberá capturar estos errores y detener el flujo; no se genera una puntuación alternativa. Las causas originales se conservan para diagnóstico; los mensajes destinados a la interfaz no incluyen la respuesta original ni credenciales.
+
+La etapa 6 añade 21 pruebas, incluidas solicitudes y respuestas HTTP simuladas que recorren el adaptador real de LangChain/OpenAI. **58 pruebas totales pasaron**. No se hizo tráfico hacia OpenAI ni se comprobó cuota, acceso real o calidad de evaluaciones; esa validación queda para la etapa 10. Permanece el aviso de deprecación de PyPDF2.
