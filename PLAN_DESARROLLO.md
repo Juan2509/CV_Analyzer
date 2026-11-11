@@ -8,7 +8,7 @@ Este plan se basa en `docs/referencias/TallerCVAnalyzer.md`; la guía LangChain/
 
 La primera entrega incluye un CV por análisis, extracción de texto seleccionable, datos del candidato, fortalezas, áreas de mejora, porcentaje de ajuste y recomendación. No incluye OCR, procesamiento por lotes, almacenamiento duradero, exportación, RAG, agentes, LangGraph, n8n, PostgreSQL ni pgAdmin.
 
-Los mensajes de commit propuestos usan Conventional Commits: `tipo(ámbito): descripción`. Se proponen en inglés para mantener un historial consistente. Cada etapa se cierra con su comprobación y su commit; no se crean commits automáticamente por haber redactado este plan.
+Los mensajes de commit propuestos usan Conventional Commits: `tipo(ámbito): descripción`. Las descripciones se escriben en español, según la preferencia del usuario; los tipos convencionales se mantienen. Cada etapa se cierra con su comprobación y su commit; no se crean commits automáticamente por haber redactado este plan.
 
 ## Organización propuesta
 
@@ -53,7 +53,7 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 **Comprobación:** contrastar el plan con el taller. Las referencias Markdown contienen imágenes externas no adjuntadas; no tratarlas como archivos disponibles.
 
-**Commit:** `docs(plan): define CV analyzer scope and implementation milestones`
+**Commit:** `docs(plan): definir alcance y etapas del analizador de CV`
 
 ## Etapa 2. Preparar el proyecto y el entorno
 
@@ -65,9 +65,11 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 **Comprobación:** instalar en un entorno aislado, ejecutar `python -m pip check` y comprobar los imports. No llamar todavía al modelo.
 
-**Commit:** `chore(setup): configure Python dependencies and development environment`
+**Commit:** `chore(setup): configurar dependencias y entorno de desarrollo`
 
 ## Etapa 3. Definir el modelo de análisis
+
+**Estado:** completada. `AnalisisCV` implementado con los ocho campos obligatorios y ajuste entre 0 y 100. Las 17 pruebas de contrato pasaron; no se realizaron llamadas a OpenAI.
 
 **Archivos:** `models/cv_model.py` y pruebas del esquema.
 
@@ -75,7 +77,7 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 **Comprobación:** aceptar un resultado válido y los límites 0/100; rechazar valores fuera del rango y campos obligatorios ausentes.
 
-**Commit:** `feat(models): define validated candidate analysis schema`
+**Commit:** `feat(models): definir esquema validado del análisis de candidatos`
 
 ## Etapa 4. Implementar la extracción del PDF
 
@@ -85,7 +87,7 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 **Comprobación:** usar documentos sintéticos sin datos personales: PDF con texto en varias páginas, documento sin texto extraíble y archivo inválido. Verificar contenido y separación de páginas.
 
-**Commit:** `feat(pdf): extract resume text and report unreadable documents`
+**Commit:** `feat(pdf): extraer texto del CV y gestionar documentos ilegibles`
 
 ## Etapa 5. Construir los prompts de evaluación
 
@@ -95,7 +97,7 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 **Comprobación:** construir los mensajes con datos sintéticos y comprobar variables y roles. Confirmar que están presentes ambos textos y los cuatro criterios. Esta comprobación no requiere una llamada a la API.
 
-**Commit:** `feat(prompts): define evidence-based resume evaluation criteria`
+**Commit:** `feat(prompts): definir criterios de evaluación basados en el CV`
 
 ## Etapa 6. Integrar LangChain y OpenAI
 
@@ -107,7 +109,7 @@ Crear cada archivo cuando corresponda a su etapa, evitando módulos vacíos que 
 
 **Comprobación:** simular el modelo para verificar el contrato y los errores sin consumir API. Reservar una prueba real para la integración final, cuando la credencial esté configurada.
 
-**Commit:** `feat(evaluation): evaluate resumes with structured LangChain output`
+**Commit:** `feat(evaluation): evaluar CV con salida estructurada de LangChain`
 
 ## Etapa 7. Construir la interfaz y conectar el flujo
 
@@ -126,7 +128,7 @@ Mostrar ambas etiquetas sin confundirlas: 65 % corresponde a Bueno y con potenci
 
 **Comprobación:** iniciar Streamlit, recorrer el flujo con un evaluador simulado y comprobar entradas faltantes, extracción fallida, evaluación fallida y resultado satisfactorio. Verificar los límites de ambas escalas con casos parametrizados.
 
-**Commit:** `feat(ui): add resume upload and candidate analysis workflow`
+**Commit:** `feat(ui): incorporar carga de CV y flujo de análisis de candidatos`
 
 ## Etapa 8. Mejorar el estado de la interfaz (recomendada)
 
@@ -136,7 +138,7 @@ Esta etapa corrige limitaciones descritas en el taller y amplía su comportamien
 
 **Comprobación:** el resultado permanece al interactuar con controles; un cambio de entradas invalida o identifica claramente el resultado anterior; Limpiar reinicia el formulario y no se vuelve a evaluar sin solicitud.
 
-**Commit:** `feat(ui): retain session analysis and reset form state`
+**Commit:** `feat(ui): conservar análisis en sesión y restablecer formulario`
 
 ## Etapa 9. Preparar la ejecución en Docker
 
@@ -146,7 +148,7 @@ Esta etapa corrige limitaciones descritas en el taller y amplía su comportamien
 
 **Comprobación:** construir la imagen, arrancar el contenedor con la configuración externa y comprobar que se sirve la aplicación correcta. Si Docker no está disponible, registrar la comprobación pendiente, sin afirmar que se validó.
 
-**Commit:** `build(docker): containerize the standalone Streamlit application`
+**Commit:** `build(docker): contenerizar la aplicación independiente de Streamlit`
 
 ## Etapa 10. Validar y documentar la entrega
 
@@ -165,10 +167,10 @@ Esta etapa corrige limitaciones descritas en el taller y amplía su comportamien
 
 **Commits:** separar pruebas y documentación cuando haya cambios en ambos:
 
-- `test(integration): cover candidate analysis success and failure paths`
-- `docs(readme): document setup usage and project limitations`
+- `test(integration): cubrir casos de éxito y error del análisis`
+- `docs(readme): documentar instalación, uso y limitaciones`
 
-Si las pruebas detectan un defecto, corregirlo con un commit concreto, por ejemplo `fix(evaluation): preserve API errors without generating fake results`. No crear commits de pruebas vacíos si la cobertura necesaria ya se incorporó en etapas previas.
+Si las pruebas detectan un defecto, corregirlo con un commit concreto, por ejemplo `fix(evaluation): comunicar errores de API sin generar resultados ficticios`. No crear commits de pruebas vacíos si la cobertura necesaria ya se incorporó en etapas previas.
 
 ## Forma de trabajar con los commits
 

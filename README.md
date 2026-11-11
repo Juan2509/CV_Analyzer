@@ -2,7 +2,7 @@
 
 Proyecto académico para comparar un CV en PDF con la descripción de un puesto mediante Streamlit, LangChain y OpenAI, y presentar un análisis estructurado con Pydantic.
 
-**Estado actual:** etapas 1 y 2 completadas: alcance documentado y entorno instalado y verificado. La aplicación aún no está implementada.
+**Estado actual:** etapas 1 a 3 completadas: alcance documentado, entorno verificado y modelo de análisis implementado. El flujo de la aplicación aún está pendiente.
 
 ## Documentación
 
@@ -60,3 +60,15 @@ Las instrucciones para iniciar la aplicación y ejecutarla con Docker se incorpo
 ## Verificación del entorno
 
 Se comprobó `pip check` sin conflictos y la importación de Streamlit, PyPDF2, LangChain OpenAI, LangChain Core, Pydantic y pytest. Consulta el [registro de la etapa 2](docs/ENTORNO.md). Esta comprobación no valida todavía el análisis de CV ni el acceso a la API.
+
+## Modelo y pruebas
+
+`models/cv_model.py` define `AnalisisCV` con los ocho campos obligatorios del taller y valida que el porcentaje de ajuste esté entre 0 y 100. Conserva los nombres `education` y `experiencia_años` del contrato de referencia. Las listas contienen textos y no tienen restricciones adicionales de longitud.
+
+Para ejecutar las pruebas desde la raíz:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+La etapa 3 se verificó con 17 pruebas satisfactorias de datos válidos, límites, campos ausentes y tipos de elementos de listas. No requieren credenciales ni llamadas a OpenAI.
