@@ -27,7 +27,7 @@ La **evaluación principal** utiliza 80–100: Excelente; 60–79: Bueno; 40–5
 
 ## Requisitos
 
-- Python 3.12 para ejecutar localmente.
+- Python 3.12 como versión de referencia; también se comprobó la instalación y el arranque en Linux con Python 3.14.4.
 - Clave de Gemini con acceso al modelo y cuota disponible.
 - Internet para la evaluación.
 - PDF con texto seleccionable; no se realiza OCR.
@@ -113,50 +113,70 @@ En las siguientes ejecuciones, basta con entrar en la carpeta, configurar la cla
 
 ## Ejecución local en Linux
 
-Ejecuta estos comandos en Bash desde una terminal. Necesitas Python 3.12 con los módulos `venv` y `pip` disponibles; si faltan, instálalos mediante el gestor de paquetes de tu distribución.
+Ejecuta los siguientes comandos en Bash, una línea a la vez. Copia solamente el contenido de los bloques, sin el indicador de la terminal (`camper@...$`). Mantén abierta la terminal mientras uses la aplicación.
 
-### 1. Entrar en el proyecto
+### 1. Entrar en el proyecto y comprobar Python
 
-```bash
-cd /ruta/al/proyecto/CV_Analyzer
-```
-
-Sustituye la ruta por la ubicación real del repositorio en Linux.
-
-### 2. Crear el entorno virtual
-
-La primera vez:
+Si guardaste el proyecto en el Escritorio:
 
 ```bash
-python3.12 --version
-python3.12 -m venv .venv
+cd ~/Escritorio/CV_Analyzer
+ls app.py requirements.txt requirements-lock.txt
+python3 --version
 ```
 
-Si `python3 --version` muestra Python 3.12, también puedes utilizar `python3` para crearlo. Si el proyecto procede de Windows, crea un entorno nuevo en Linux: no reutilices ni copies el `.venv` de Windows. Si ya tienes un `.venv` creado en Linux para este proyecto, omite este paso.
+Si está en otra carpeta, adapta el comando `cd`. El comando `ls` debe encontrar los tres archivos; de lo contrario, revisa la ubicación antes de continuar.
 
-### 3. Instalar o actualizar dependencias
+Python 3.12 es la versión de referencia. En este equipo Linux también se instaló el proyecto y se comprobó el arranque con Python 3.14.4. No necesitas instalar Python 3.12 si ya tienes ese entorno funcionando.
+
+### 2. Crear el entorno virtual (solo la primera vez)
+
+```bash
+python3 -m venv .venv
+./.venv/bin/python --version
+./.venv/bin/python -m pip --version
+```
+
+Si utilizas un ejecutable específico, sustituye únicamente el primer comando por, por ejemplo, `python3.14 -m venv .venv`. Si ya tienes un `.venv` creado en Linux y los dos comandos de comprobación funcionan, omite su creación. Los entornos de Windows no se pueden reutilizar en Linux.
+
+No necesitas activar el entorno: los siguientes pasos utilizan directamente `./.venv/bin/python`. No uses `sudo` para instalar paquetes dentro de `.venv`.
+
+### 3. Instalar o actualizar las dependencias
 
 ```bash
 ./.venv/bin/python -m pip install -r requirements.txt -c requirements-lock.txt
 ./.venv/bin/python -m pip check
+./.venv/bin/python -m streamlit --version
 ```
 
-No es necesario activar el entorno porque se invoca su intérprete directamente. Las versiones registradas se verificaron en Windows; la instalación y `pip check` deben comprobarse también en tu distribución Linux.
+Espera a que termine la instalación antes de iniciar la aplicación. `Requirement already satisfied` significa que el paquete ya está instalado; no es un error. `pip check` debe terminar con `No broken requirements found`.
 
-### 4. Configurar Gemini
+**No ejecutes `-m pip install ...` por separado:** `-m` es una opción de Python, no un comando de Bash. Copia la línea completa, empezando por `./.venv/bin/python`.
 
-En la misma terminal que iniciará la aplicación:
+### 4. Configurar la API de Gemini
+
+En la misma terminal donde iniciarás Streamlit:
 
 ```bash
 export GOOGLE_API_KEY="tu_clave_de_gemini"
 ```
 
-Sustituye el ejemplo por tu clave de Google AI Studio. Como alternativa puedes definir `GEMINI_API_KEY`; si ambas tienen valor, prevalece `GOOGLE_API_KEY`. La variable pertenece a la sesión de la terminal y `.env` no se carga automáticamente.
+Sustituye el ejemplo por tu clave de [Google AI Studio](https://aistudio.google.com/apikey). La aplicación sigue usando la API de Gemini; instalar dependencias o cambiar el puerto no requiere cambiar de proveedor ni de clave.
 
-El modelo predeterminado es `gemini-3.5-flash-lite`. Para cambiarlo, define opcionalmente:
+Como alternativa puedes definir `GEMINI_API_KEY`; si ambas tienen valor, prevalece `GOOGLE_API_KEY`. `.env` no se carga automáticamente. Si abres otra terminal, vuelve a definir la variable allí. No publiques la clave ni la incluyas en archivos versionados.
+
+Puedes comprobar que hay una clave configurada sin mostrarla:
 
 ```bash
-export GEMINI_MODEL="gemini-3.6-flash"
+./.venv/bin/python -c 'import os; print("Clave configurada" if (os.getenv("GOOGLE_API_KEY", "").strip() or os.getenv("GEMINI_API_KEY", "").strip()) else "Falta configurar la clave")'
+```
+
+Esta comprobación solo verifica que la variable tiene contenido; no consulta su validez ni su cuota.
+
+El modelo predeterminado es `gemini-3.5-flash-lite`. Solo si necesitas otro modelo disponible para tu cuenta, define `GEMINI_MODEL` antes de arrancar. Para volver al predeterminado:
+
+```bash
+unset GEMINI_MODEL
 ```
 
 ### 5. Iniciar y utilizar la aplicación
@@ -165,16 +185,110 @@ export GEMINI_MODEL="gemini-3.6-flash"
 ./.venv/bin/python -m streamlit run app.py --server.port=8501 --browser.gatherUsageStats=false
 ```
 
-Abre <http://localhost:8501>, carga el CV en PDF, escribe la vacante y pulsa **Analizar Candidato**. Detén el servidor con `Ctrl+C`. Si el puerto está ocupado, cambia `--server.port`.
+Cuando aparezca la URL, abre <http://localhost:8501> en el navegador del mismo equipo. Que la terminal permanezca ocupada es normal: está ejecutando el servidor. Carga un CV en PDF con texto seleccionable, escribe la vacante y pulsa **Analizar Candidato**.
 
-Para ejecutarla nuevamente, entra en la carpeta del proyecto, configura la clave en esa terminal e inicia Streamlit. No necesitas recrear el entorno en cada ejecución. Para ejecutar las pruebas en Linux:
+Para detener el servidor, pulsa `Ctrl+C` en esa terminal. Si cambiaste la clave o el modelo, detén el servidor y vuelve a iniciarlo para aplicar las variables nuevas.
+
+### 6. Volver a ejecutar el programa
+
+En una terminal nueva:
+
+```bash
+cd ~/Escritorio/CV_Analyzer
+export GOOGLE_API_KEY="tu_clave_de_gemini"
+./.venv/bin/python -m streamlit run app.py --server.port=8501 --browser.gatherUsageStats=false
+```
+
+Adapta la ruta si corresponde. No recrees `.venv` en cada ejecución. Repite la instalación de dependencias cuando cambien los archivos `requirements`.
+
+### Si algo falla en Linux
+
+**`-m: no se encontró la orden` o `No module named streamlit`**
+
+Instala usando el mismo intérprete con el que ejecutarás Streamlit:
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt -c requirements-lock.txt
+./.venv/bin/python -m pip check
+./.venv/bin/python -m streamlit --version
+```
+
+**`python3.12: orden no encontrada`**
+
+Comprueba el Python disponible y crea el entorno con ese ejecutable:
+
+```bash
+python3 --version
+python3 -m venv .venv
+```
+
+Si ya creaste `.venv` con Python 3.14 y funciona, continúa con la instalación de dependencias; no necesitas recrearlo con 3.12.
+
+**Falta Python, `venv` o aparece un error sobre `ensurepip` al crear el entorno**
+
+En Ubuntu/Debian, instala Python y el soporte de entornos virtuales del sistema:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-venv python3-pip
+python3 -m venv .venv
+```
+
+Después vuelve al paso 3. Si elegiste una versión específica de Python, necesitas el paquete `venv` correspondiente a esa versión, si tu distribución lo ofrece. En otras distribuciones utiliza su gestor de paquetes.
+
+**`No module named pip` dentro de un entorno ya creado**
+
+```bash
+./.venv/bin/python -m ensurepip --upgrade
+./.venv/bin/python -m pip install -r requirements.txt -c requirements-lock.txt
+```
+
+Si `ensurepip` tampoco está disponible, instala el soporte `venv` descrito arriba y vuelve a crear el entorno.
+
+**`Port 8501 is not available`**
+
+Ya hay un proceso usando ese puerto. Si es otra instancia de la aplicación, puedes abrir <http://localhost:8501> o detenerla con `Ctrl+C` en su terminal. Para iniciar otra instancia en un puerto diferente:
+
+```bash
+./.venv/bin/python -m streamlit run app.py --server.port=8502 --browser.gatherUsageStats=false
+```
+
+En ese caso abre **<http://localhost:8502>**. Para identificar quién ocupa el puerto original:
+
+```bash
+ss -ltnp 'sport = :8501'
+```
+
+Revisa el proceso antes de detenerlo; no cierres procesos desconocidos para liberar el puerto.
+
+**No abre la página en el navegador**
+
+Comprueba que la terminal del servidor sigue abierta y que estás usando el puerto indicado en su URL. Desde otra terminal, si tienes `curl` instalado:
+
+```bash
+curl --fail http://localhost:8501/_stcore/health
+```
+
+Debe responder `ok`; adapta el puerto si usas 8502. Esta comprobación verifica el servidor, no el acceso a Gemini.
+
+**La página abre, pero falla el análisis con Gemini**
+
+Comprueba la presencia de la variable con el comando del paso 4 y reinicia Streamlit desde esa misma terminal. Si el mensaje indica clave inválida, permisos, cuota o modelo no disponible, revisa esos datos en Google AI Studio. Reinstalar Streamlit o cambiar el puerto no corrige un rechazo de la API. Si definiste un modelo por error, ejecuta `unset GEMINI_MODEL` y reinicia.
+
+**Errores de conexión durante `pip install`**
+
+Comprueba la conexión a Internet y la configuración de proxy o DNS del equipo. Después repite el comando completo del paso 3. Si la instalación termina con `ERROR`, no continúes al arranque hasta resolver ese mensaje.
+
+### Pruebas opcionales en Linux
+
+No son necesarias para iniciar la aplicación:
 
 ```bash
 ./.venv/bin/python -m pip install -r requirements-dev.txt -c requirements-lock.txt
 ./.venv/bin/python -m pytest -q
 ```
 
-Estas instrucciones de Linux no se han ejecutado en este equipo Windows.
+Se comprobaron la instalación de dependencias, `pip check`, los imports de la aplicación y el arranque de Streamlit en Linux con Python 3.14.4. La evaluación real con Gemini requiere verificar por separado la clave, el acceso al modelo y la cuota.
 
 ## Ejecución con Docker
 
